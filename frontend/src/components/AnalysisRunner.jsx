@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { pollJob } from '../api/client'
 import { Loader2 } from 'lucide-react'
+import { useJob } from '../context/JobContext'
 
 export default function AnalysisRunner({ jobId }) {
+  const { setIsJobRunning } = useJob()
   const [job, setJob] = useState(null)
   const [error, setError] = useState('')
 
@@ -18,16 +20,19 @@ export default function AnalysisRunner({ jobId }) {
           const data = await pollJob(jobId)
           if (cancelled) break
           setJob(data)
-          if (data.status === 'completed' || data.status === 'failed') break
+          const active = data.status === 'pending' || data.status === 'running'
+          setIsJobRunning(active)
+          if (!active) break
         } catch (e) {
           if (!cancelled) setError(e.message)
+          setIsJobRunning(false)
           break
         }
         await new Promise((r) => setTimeout(r, 2000))
       }
     }
     poll()
-    return () => { cancelled = true }
+    return () => { cancelled = true; setIsJobRunning(false) }
   }, [jobId])
 
   if (!jobId) return null

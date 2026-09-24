@@ -4,8 +4,10 @@ import PatternSelector from '../components/PatternSelector'
 import AnalysisRunner from '../components/AnalysisRunner'
 import usePersistedState from '../hooks/usePersistedState'
 import { startRumbleAnalysis, getModels, checkRumbleResult } from '../api/client'
+import { useJob } from '../context/JobContext'
 
 export default function RumbleAnalysisPage() {
+  const { isJobRunning } = useJob()
   const [url, setUrl] = usePersistedState('rumble-url', '')
   const [pattern, setPattern] = usePersistedState('rumble-pattern', 'create_micro_summary')
   const [model, setModel] = usePersistedState('analysis-model', '')
@@ -98,7 +100,7 @@ export default function RumbleAnalysisPage() {
 
         <button
           onClick={handleAnalyze}
-          disabled={!url || !pattern}
+          disabled={!url || !pattern || isJobRunning}
           className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-500 disabled:bg-gray-700 disabled:text-gray-500 rounded-lg font-medium transition"
         >
           <Video size={18} /> Analyze Rumble Video
