@@ -12,7 +12,7 @@ class AnalysisJob(Base):
     __tablename__ = "analysis_jobs"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    source = Column(String, nullable=False)  # youtube | rumble | file | web
+    source = Column(String, nullable=False)  # youtube | rumble
     url = Column(Text, nullable=True)
     file_path = Column(Text, nullable=True)
     pattern = Column(String, nullable=False)
@@ -27,3 +27,11 @@ class AnalysisJob(Base):
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
+
+
+class CacheEntry(Base):
+    __tablename__ = "cache_store"
+
+    key = Column(String, primary_key=True)
+    value = Column(Text, nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

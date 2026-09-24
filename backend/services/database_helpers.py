@@ -1,6 +1,6 @@
 from typing import Optional
 
-from backend.models import AnalysisJob
+from backend.models import AnalysisJob, CacheEntry
 from backend.database import async_session
 from backend.schemas import JobStatusResponse
 from backend.services.fabric_service import DEFAULT_MODEL
@@ -177,3 +177,23 @@ async def update_job_status(job_id: str, status: str, **extra_fields):
             for k, v in extra_fields.items():
                 setattr(job, k, v)
             await session.commit()
+
+
+async def get_cache(key: str) -> tuple[str | None, datetime | None]:
+    async with async_session() as session:
+        entry = await session.get(CacheEntry, key)
+        if entry:
+            return entry.value, entry.updated_at
+        return None, None
+
+
+async def set_cache(key: str, value: str):
+    from datetime import datetime, timezone
+    async with async_session() as session:
+        entry = await session.get(CacheEntry, key)
+        if entry:
+            entry.value = value
+            entry.updated_at = datetime.now(timezone.utc)
+        else:
+            session.add(CacheEntry(key=key, value=value))
+        await session.commit()

@@ -3,17 +3,20 @@ import json
 import os
 import re
 import time
+from datetime import datetime, timezone
 
 import cloudscraper
+
+from backend.services.database_helpers import get_cache, set_cache
 
 CHANNEL_URL = os.environ.get("RUMBLE_CHANNEL_URL", "https://rumble.com/c/MarinaJacobi")
 MAX_RESULTS = int(os.environ.get("CHANNEL_MAX_RESULTS", "500"))
 BATCH_SIZE = int(os.environ.get("CHANNEL_BATCH_SIZE", "3"))
-CACHE_TTL = int(os.environ.get("CHANNEL_CACHE_TTL", "300"))  # 5 minutes
+REFRESH_INTERVAL = int(os.environ.get("CHANNEL_REFRESH_INTERVAL", "3600"))  # 1 hour
+CACHE_KEY = "channel_videos"
 
 _SCRAPER = None
-_cache: list[dict] | None = None
-_cache_time: float = 0
+_background_task: asyncio.Task | None = None
 
 
 def _get_scraper():
@@ -24,7 +27,6 @@ def _get_scraper():
 
 
 def _parse_video_json(html: str) -> list[dict]:
-    """Extract video items from rum-videos-grid JSON script blocks in the page HTML."""
     videos = []
     pattern = re.compile(
         r'<rum-videos-grid[^>]*>\s*<script[^>]*type=["\']application/json["\'][^>]*>(.*?)</script>\s*</rum-videos-grid>',
@@ -64,28 +66,7 @@ def _has_next_page(html: str) -> str | None:
     return None
 
 
-def _next_page_url(url: str) -> str | None:
-    """Infer the next page URL from the current page number."""
-    if "?page=" in url:
-        base, page = url.rsplit("?page=", 1)
-        try:
-            return f"{base}?page={int(page) + 1}"
-        except ValueError:
-            return None
-    return url + "?page=2"
-
-
-def _page_number(url: str) -> int:
-    if "?page=" in url:
-        try:
-            return int(url.rsplit("?page=", 1)[1])
-        except ValueError:
-            return 1
-    return 1
-
-
 def _fetch_page(url: str) -> tuple[str, str | None]:
-    """Fetch a page, return (html, next_url_or_None)."""
     scraper = _get_scraper()
     resp = scraper.get(url, timeout=30)
     resp.raise_for_status()
@@ -96,20 +77,13 @@ def _fetch_page(url: str) -> tuple[str, str | None]:
     return html, next_url
 
 
-async def list_channel_videos(max_results: int = MAX_RESULTS) -> list[dict]:
-    global _cache, _cache_time
-
-    # Return cached result if fresh
-    now = time.time()
-    if _cache is not None and now - _cache_time < CACHE_TTL:
-        return _cache[:max_results]
-
+async def _fetch_all_videos(max_results: int) -> list[dict]:
+    """Fetch all channel pages from Rumble and return video list."""
     all_videos = []
     discovered_urls: set[str] = set()
     pending = [CHANNEL_URL]
 
     while pending and len(all_videos) < max_results:
-        # Fetch current batch in parallel (up to BATCH_SIZE at once)
         batch = pending[:BATCH_SIZE]
         pending = pending[BATCH_SIZE:]
 
@@ -120,26 +94,50 @@ async def list_channel_videos(max_results: int = MAX_RESULTS) -> list[dict]:
 
         for url, result in zip(batch, results):
             if isinstance(result, Exception):
-                raise RuntimeError(f"Failed to fetch {url}: {result}")
-
+                continue  # skip failed pages, return what we have
             html, next_url = result
-
             page_videos = _parse_video_json(html)
             all_videos.extend(page_videos)
-
-            # Schedule next page if not already discovered
             if next_url and next_url not in discovered_urls:
                 discovered_urls.add(next_url)
                 pending.append(next_url)
 
-        # If we got all videos and there are no more pages, stop
         if not pending:
             break
 
-    result = all_videos[:max_results]
+    return all_videos[:max_results]
 
-    # Cache the full result
-    _cache = result
-    _cache_time = time.time()
 
-    return result
+async def _refresh_cache():
+    """Background task: fetch videos from Rumble and store to DB."""
+    global _background_task
+    try:
+        videos = await _fetch_all_videos(MAX_RESULTS)
+        await set_cache(CACHE_KEY, json.dumps(videos))
+    except Exception:
+        pass  # background failure is non-fatal; stale cache is served
+    finally:
+        _background_task = None
+
+
+async def list_channel_videos(max_results: int = MAX_RESULTS) -> list[dict]:
+    global _background_task
+
+    # 1. Try DB cache
+    cached_json, updated_at = await get_cache(CACHE_KEY)
+
+    if cached_json:
+        videos = json.loads(cached_json)
+
+        # 2. If cache is stale, trigger a background refresh (non-blocking)
+        if updated_at:
+            age = (datetime.now(timezone.utc) - updated_at).total_seconds()
+            if age > REFRESH_INTERVAL and _background_task is None:
+                _background_task = asyncio.create_task(_refresh_cache())
+
+        return videos[:max_results]
+
+    # 3. No cache at all (first-ever request) — fetch synchronously, store, return
+    videos = await _fetch_all_videos(MAX_RESULTS)
+    await set_cache(CACHE_KEY, json.dumps(videos))
+    return videos[:max_results]
