@@ -83,6 +83,9 @@ export default function RumbleAnalysisPage() {
             onChange={(e) => setUrl(e.target.value)}
             className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
           />
+          <p className="mt-1 text-xs text-gray-500">
+            Only videos from channel <strong>MarinaJacobi</strong> are supported.
+          </p>
         </div>
 
         <PatternSelector

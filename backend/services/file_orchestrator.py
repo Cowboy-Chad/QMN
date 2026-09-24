@@ -22,9 +22,9 @@ async def _pipeline(job_id: str, file_path: str, pattern: str, model: str | None
     t0 = time.time()
     meta = {}
 
-    await update_job_status(job_id, "running")
-
     try:
+        await update_job_status(job_id, "running")
+
         transcript = await transcribe_file(file_path)
 
         result = await run_fabric(pattern, transcript, model=model)

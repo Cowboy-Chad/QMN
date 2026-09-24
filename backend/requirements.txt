@@ -7,3 +7,4 @@ httpx
 tiktoken
 youtube-transcript-api
 python-multipart
+cloudscraper

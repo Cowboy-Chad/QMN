@@ -15,7 +15,7 @@ export default function Layout({ children }) {
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <Link to="/analysis/youtube" className="flex items-center gap-2 text-lg font-bold">
             <Shield className="text-violet-400" size={22} />
-            CVE-OSINT-1
+            Marina Jacobi AI Extracts
           </Link>
           <div className="flex items-center gap-1 flex-wrap">
             <NavLink to="/analysis/youtube" className={navLinkClass}>

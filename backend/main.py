@@ -20,7 +20,18 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="CVE-OSINT-1", lifespan=lifespan)
+app = FastAPI(title="Marina Jacobi AI Extracts", lifespan=lifespan)
+
+
+@app.get("/health")
+async def root_health():
+    return {"status": "ok"}
+
+
+@app.get("/v1/models")
+async def openai_compat_models():
+    return {"object": "list", "data": []}
+
 
 app.add_middleware(
     CORSMiddleware,

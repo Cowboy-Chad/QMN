@@ -1,4 +1,4 @@
-# CVE-OSINT-1
+# Marina Jacobi AI Extracts
 
 OSINT analysis app leveraging [Fabric](https://github.com/danielmiessler/fabric) AI patterns for automated analysis of multimedia content.
 

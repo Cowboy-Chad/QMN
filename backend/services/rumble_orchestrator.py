@@ -1,4 +1,5 @@
 import asyncio
+import os
 import re
 import time
 
@@ -9,6 +10,9 @@ from backend.services.rumble_service import download_and_transcribe
 from backend.services.metadata_service import fetch_video_metadata
 from backend.services.fabric_service import run_fabric
 from backend.services.cost_service import estimate_cost
+
+RUMBLE_CHANNEL = os.environ.get("RUMBLE_CHANNEL", "MarinaJacobi")
+RUMBLE_CHANNEL_LOWER = RUMBLE_CHANNEL.lower()
 
 _jobs: dict[str, asyncio.Task] = {}
 
@@ -28,9 +32,9 @@ async def _pipeline(job_id: str, url: str, pattern: str, model: str | None):
     t0 = time.time()
     meta = {}
 
-    await update_job_status(job_id, "running")
-
     try:
+        await update_job_status(job_id, "running")
+
         if not re.search(r'rumble\.com', url):
             raise ValueError(f"URL does not appear to be a Rumble URL: {url}")
 
@@ -38,6 +42,13 @@ async def _pipeline(job_id: str, url: str, pattern: str, model: str | None):
             meta = await asyncio.wait_for(fetch_video_metadata(url), timeout=10)
         except (asyncio.TimeoutError, Exception):
             meta = {}
+
+        channel = (meta.get("channel") or "").lower()
+        if channel and channel != RUMBLE_CHANNEL_LOWER:
+            raise ValueError(
+                f"This app only supports videos from channel '{RUMBLE_CHANNEL}'. "
+                f"The detected channel is '{meta.get('channel')}'."
+            )
 
         transcript = await find_existing_transcript("rumble", url)
 

@@ -28,9 +28,9 @@ async def _pipeline(job_id: str, url: str, pattern: str, model: str | None):
     t0 = time.time()
     meta = {}
 
-    await update_job_status(job_id, "running")
-
     try:
+        await update_job_status(job_id, "running")
+
         if not re.search(r'(youtube\.com|youtu\.be)', url):
             raise ValueError(f"URL does not appear to be a YouTube URL: {url}")
 

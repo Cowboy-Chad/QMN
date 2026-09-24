@@ -26,9 +26,9 @@ async def _pipeline(job_id: str, url: str, pattern: str, model: str | None):
     t0 = time.time()
     meta = {}
 
-    await update_job_status(job_id, "running")
-
     try:
+        await update_job_status(job_id, "running")
+
         transcript = await scrape_text(url)
 
         result = await run_fabric(pattern, transcript, model=model)

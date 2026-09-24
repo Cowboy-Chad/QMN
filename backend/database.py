@@ -1,7 +1,7 @@
 import os
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "..", "cve_osint.db")
+DB_PATH = os.path.join(os.path.dirname(__file__), "..", "marina_jacobi.db")
 DATABASE_URL = f"sqlite+aiosqlite:///{DB_PATH}"
 
 engine = create_async_engine(DATABASE_URL, echo=False)
