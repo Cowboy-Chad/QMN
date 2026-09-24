@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 from typing import Optional
 from datetime import datetime
 
@@ -33,6 +33,13 @@ class JobStatusResponse(BaseModel):
     metadata_json: Optional[dict] = None
     created_at: datetime
     updated_at: datetime
+
+    @field_serializer("created_at", "updated_at")
+    def serialize_dt(self, dt: datetime) -> str:
+        # SQLite loses tzinfo, so naive datetimes are actually UTC
+        if dt.tzinfo is None:
+            return dt.isoformat() + "+00:00"
+        return dt.isoformat()
 
 
 class HistoryFilter(BaseModel):

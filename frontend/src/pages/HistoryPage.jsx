@@ -147,7 +147,10 @@ export default function HistoryPage() {
                     }`}>{job.status}</span>
                   </div>
                   <div className="text-xs text-gray-500 mt-0.5">
-                    Source: {job.source === 'rumble' ? "Marina Jacobi's Rumble Channel" : (job.source || '—')} · Pattern used was: {job.pattern} · {new Date(job.created_at).toLocaleString('en-US', { timeZone: 'UTC' })} UTC
+                    Source: {job.source === 'rumble' ? "Marina Jacobi's Rumble Channel" : (job.source || '—')} · Pattern used was: {job.pattern} · {(function() {
+                      const d = new Date(job.created_at.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(job.created_at) ? job.created_at : job.created_at + 'Z');
+                      return d.toLocaleString('en-US', { timeZone: 'UTC' });
+                    })()} UTC
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
