@@ -159,6 +159,11 @@ def _relative_time_str(date_str: str) -> str:
 
 
 async def fetch_video_metadata(url: str) -> dict:
+    # Rumble: use oEmbed API directly — yt-dlp often fails or returns display
+    # names instead of channel handles, which breaks channel validation.
+    if re.search(r'rumble\.com', url):
+        return await _fetch_rumble_metadata(url)
+
     try:
         proc = await asyncio.create_subprocess_exec(
             "yt-dlp",
@@ -174,8 +179,6 @@ async def fetch_video_metadata(url: str) -> dict:
         data = json.loads(stdout.decode().strip())
         return _build_metadata(data)
     except (asyncio.TimeoutError, Exception):
-        if re.search(r'rumble\.com', url):
-            return await _fetch_rumble_metadata(url)
         return {}
 
 
