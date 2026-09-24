@@ -1,4 +1,4 @@
-# Marina Jacobi AI Extracts
+# Marina's Wisdom
 
 OSINT analysis app leveraging [Fabric](https://github.com/danielmiessler/fabric) AI patterns for automated analysis of multimedia content.
 

@@ -1,8 +1,8 @@
-# Marina Jacobi AI Extracts — Application Analysis
+# Marina's Wisdom — Application Analysis
 
 ## Overview
 
-Marina Jacobi AI Extracts is a multimedia OSINT (Open Source Intelligence) analysis web application. It allows a user to submit content from four sources — YouTube videos, Rumble videos, uploaded audio/video files, and web page URLs — and run AI-powered analysis patterns against the extracted text content. The analysis is performed by the [Fabric](https://github.com/danielmiessler/fabric) CLI, which routes prompts to LLMs via OpenRouter.
+Marina's Wisdom is a multimedia OSINT (Open Source Intelligence) analysis web application. It allows a user to submit content from four sources — YouTube videos, Rumble videos, uploaded audio/video files, and web page URLs — and run AI-powered analysis patterns against the extracted text content. The analysis is performed by the [Fabric](https://github.com/danielmiessler/fabric) CLI, which routes prompts to LLMs via OpenRouter.
 
 ---
 

@@ -20,7 +20,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Marina Jacobi AI Extracts", lifespan=lifespan)
+app = FastAPI(title="Marina's Wisdom", lifespan=lifespan)
 
 
 @app.get("/health")

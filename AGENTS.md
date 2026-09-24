@@ -1,4 +1,4 @@
-# AGENTS.md — Marina Jacobi AI Extracts
+# AGENTS.md — Marina's Wisdom
 
 OSINT multimedia analysis app: React (Vite) → FastAPI (Python) → Fabric CLI → OpenRouter API.
 

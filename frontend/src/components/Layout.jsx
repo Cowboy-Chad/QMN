@@ -24,7 +24,7 @@ export default function Layout({ children }) {
             className={`flex items-center gap-2 text-lg font-bold ${isJobRunning ? 'opacity-40 pointer-events-none' : ''}`}
           >
             <Shield className="text-violet-400" size={22} />
-            Marina Jacobi AI Extracts
+            Marina's Wisdom
           </Link>
           <div className="flex items-center gap-1 flex-wrap">
             <NavLink to="/analysis/youtube" className={isJobRunning ? navLinkClassDisabled : navLinkClass}>
