@@ -1,18 +1,25 @@
-import { useEffect, useState } from 'react'
-import { Search, X } from 'lucide-react'
+import { useEffect, useState, useRef } from 'react'
+import { Search, Loader2 } from 'lucide-react'
 import { getChannelVideos } from '../api/client'
 
 export default function VideoPicker({ onSelect }) {
   const [videos, setVideos] = useState([])
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
+  const [count, setCount] = useState(0)
   const [error, setError] = useState('')
   const [open, setOpen] = useState(false)
+  const loaded = useRef(false)
 
   useEffect(() => {
-    getChannelVideos(100)
+    if (loaded.current) return
+    loaded.current = true
+    getChannelVideos(500)
       .then((data) => {
-        if (data.videos) setVideos(data.videos)
+        if (data.videos) {
+          setVideos(data.videos)
+          setCount(data.videos.length)
+        }
         if (data.error) setError(data.error)
       })
       .catch((e) => setError(e.message))
@@ -33,17 +40,27 @@ export default function VideoPicker({ onSelect }) {
           value={query}
           onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
           onFocus={() => setOpen(true)}
-          placeholder={loading ? 'Loading videos...' : 'Search videos by title...'}
+          placeholder={loading ? `Loading all channel videos...` : `Search ${count} videos by title...`}
           className="w-full pl-9 pr-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-violet-500 transition"
         />
       </div>
 
       {open && (
         <div className="absolute z-20 mt-1 w-full bg-gray-800 border border-gray-700 rounded-lg shadow-xl max-h-60 overflow-y-auto">
-          {loading && <div className="px-3 py-2 text-xs text-gray-500">Loading...</div>}
+          {loading && (
+            <div className="flex items-center gap-2 px-3 py-3 text-xs text-gray-400">
+              <Loader2 className="animate-spin" size={14} />
+              Loading all channel videos from Rumble...
+            </div>
+          )}
           {error && <div className="px-3 py-2 text-xs text-red-400">{error}</div>}
           {!loading && !error && filtered.length === 0 && (
             <div className="px-3 py-2 text-xs text-gray-500">No videos match your search.</div>
+          )}
+          {!loading && !error && count > 0 && (
+            <div className="px-3 py-1.5 text-[10px] text-gray-600 border-b border-gray-700/50">
+              {filtered.length} of {count} videos
+            </div>
           )}
           {!loading &&
             filtered.map((v, i) => (
