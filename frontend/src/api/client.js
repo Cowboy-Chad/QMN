@@ -57,3 +57,7 @@ export function checkRumbleResult(url, pattern, model) {
 export function getModels() {
   return request('/models')
 }
+
+export function getChannelVideos(limit = 100) {
+  return request(`/channel/videos?limit=${limit}`)
+}

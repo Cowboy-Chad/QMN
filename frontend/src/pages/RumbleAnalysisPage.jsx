@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Video } from 'lucide-react'
 import PatternSelector from '../components/PatternSelector'
 import AnalysisRunner from '../components/AnalysisRunner'
+import VideoPicker from '../components/VideoPicker'
 import usePersistedState from '../hooks/usePersistedState'
 import { startRumbleAnalysis, getModels, checkRumbleResult } from '../api/client'
 import { useJob } from '../context/JobContext'
@@ -89,6 +90,8 @@ export default function RumbleAnalysisPage() {
             Only videos from channel <strong>MarinaJacobi</strong> are supported.
           </p>
         </div>
+
+        <VideoPicker onSelect={(videoUrl, videoTitle) => setUrl(videoUrl)} />
 
         <PatternSelector
           value={pattern}
