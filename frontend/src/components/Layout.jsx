@@ -1,5 +1,5 @@
 import { Link, NavLink } from 'react-router-dom'
-import { Shield, Activity, History, MonitorPlay, Video, Globe, Upload } from 'lucide-react'
+import { Shield, History, MonitorPlay, Video } from 'lucide-react'
 import { useJob } from '../context/JobContext'
 
 const navLinkClass = ({ isActive }) =>
@@ -32,12 +32,6 @@ export default function Layout({ children }) {
             </NavLink>
             <NavLink to="/analysis/rumble" className={isJobRunning ? navLinkClassDisabled : navLinkClass}>
               <Video size={16} /> Rumble
-            </NavLink>
-            <NavLink to="/analysis/web" className={isJobRunning ? navLinkClassDisabled : navLinkClass}>
-              <Globe size={16} /> Web
-            </NavLink>
-            <NavLink to="/analysis/file" className={isJobRunning ? navLinkClassDisabled : navLinkClass}>
-              <Upload size={16} /> File
             </NavLink>
             <NavLink to="/history" className={isJobRunning ? navLinkClassDisabled : navLinkClass}>
               <History size={16} /> History

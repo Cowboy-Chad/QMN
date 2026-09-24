@@ -26,23 +26,6 @@ export function startRumbleAnalysis(data) {
   })
 }
 
-export function startWebAnalysis(data) {
-  return request('/web/scrape', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  })
-}
-
-export function startFileAnalysis(formData) {
-  return fetch(`${API_BASE}/file/analyze`, {
-    method: 'POST',
-    body: formData,
-  }).then(async (resp) => {
-    if (!resp.ok) throw new Error(await resp.text())
-    return resp.json()
-  })
-}
-
 export function pollJob(jobId) {
   return request(`/jobs/${jobId}`)
 }
@@ -69,12 +52,6 @@ export function checkRumbleResult(url, pattern, model) {
   const params = new URLSearchParams({ url, pattern })
   if (model) params.set('model', model)
   return request(`/rumble/check-result?${params.toString()}`)
-}
-
-export function checkWebResult(url, pattern, model) {
-  const params = new URLSearchParams({ url, pattern })
-  if (model) params.set('model', model)
-  return request(`/web/check-result?${params.toString()}`)
 }
 
 export function getModels() {

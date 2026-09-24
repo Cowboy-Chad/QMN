@@ -3,8 +3,6 @@ import Layout from './components/Layout'
 import { JobProvider } from './context/JobContext'
 import YouTubeAnalysisPage from './pages/YouTubeAnalysisPage'
 import RumbleAnalysisPage from './pages/RumbleAnalysisPage'
-import WebAnalysisPage from './pages/WebAnalysisPage'
-import FileAnalysisPage from './pages/FileAnalysisPage'
 import HistoryPage from './pages/HistoryPage'
 
 function App() {
@@ -19,14 +17,6 @@ function App() {
         <Route
           path="/analysis/rumble"
           element={<Layout><RumbleAnalysisPage /></Layout>}
-        />
-        <Route
-          path="/analysis/web"
-          element={<Layout><WebAnalysisPage /></Layout>}
-        />
-        <Route
-          path="/analysis/file"
-          element={<Layout><FileAnalysisPage /></Layout>}
         />
         <Route
           path="/history"

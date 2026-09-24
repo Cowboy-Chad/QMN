@@ -9,8 +9,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from backend.database import init_db
 from backend.routers.youtube_router import router as youtube_router
 from backend.routers.rumble_router import router as rumble_router
-from backend.routers.web_router import router as web_router
-from backend.routers.file_router import router as file_router
 from backend.routers.shared_router import router as shared_router
 
 
@@ -43,6 +41,4 @@ app.add_middleware(
 
 app.include_router(youtube_router)
 app.include_router(rumble_router)
-app.include_router(web_router)
-app.include_router(file_router)
 app.include_router(shared_router)

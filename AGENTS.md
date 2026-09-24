@@ -35,17 +35,16 @@ npm run dev                           # Vite on localhost:5173
 ## Project Structure
 
 - `backend/main.py` — FastAPI entry point, CORS, lifespan (calls `init_db`)
-- `backend/routers/*.py` — One router per source (`youtube`, `rumble`, `web`, `file`) + `shared_router` for health/history/patterns/models/jobs
+- `backend/routers/*.py` — One router per source (`youtube`, `rumble`) + `shared_router` for health/history/patterns/models/jobs
 - `backend/services/*.py` — Orchestrators (`*_orchestrator.py`) and leaf services (`fabric_service.py`, `openrouter_service.py`, etc.)
-- `frontend/src/App.jsx` — Route definitions (`/analysis/youtube`, `/analysis/rumble`, `/analysis/web`, `/analysis/file`, `/history`)
+- `frontend/src/App.jsx` — Route definitions (`/analysis/youtube`, `/analysis/rumble`, `/history`)
 - `fabric_service.py` — Shells out to `fabric` CLI via `asyncio.create_subprocess_exec`
 
 ## API Endpoints
 
 | Method | Path | Notes |
 |--------|------|-------|
-| POST | `/api/{source}/analyze` | YouTube/Rumble/File/Web — returns `{job_id, status}` |
-| POST | `/api/file/analyze` | Multipart form (`file`, `pattern`, `model?`) |
+| POST | `/api/{source}/analyze` | YouTube/Rumble — returns `{job_id, status}` |
 | GET | `/api/jobs/{id}` | Poll job status (shared router) |
 | GET | `/api/{source}/check-result` | Duplicate detection by `source+url+pattern+model` |
 | GET | `/api/history` | `?source=&pattern=&limit=50&offset=0` |
@@ -98,8 +97,6 @@ Orchestrators (`*_orchestrator.py`) follow this pattern:
 | **Rumble** | `cloudscraper` → parse embed → pick best audio URL → download → ffmpeg compress → OpenRouter transcription (chunked) | `create_micro_summary` |
 
 **Rumble channel restriction:** Only videos from the configured channel (default: `MarinaJacobi`, overridable via `RUMBLE_CHANNEL` env var) are accepted. Videos from other channels are rejected with a clear error.
-| **File Upload** | Upload to `uploads/` → OpenRouter transcription (chunked) | `create_micro_summary` |
-| **Web** | `r.jina.ai/{url}` (Jina Reader API) | `analyze_claims` |
 
 **Rumble gotcha:** Uses `cloudscraper` to bypass Cloudflare. Parses embedded JSON (`"ua"` / `"u"` blocks) for audio URLs. Falls back to ffmpeg for HLS streams.
 
@@ -115,7 +112,7 @@ Orchestrators (`*_orchestrator.py`) follow this pattern:
 
 - **Pattern selection:** Single click highlights, double-click (or Enter) confirms and triggers auto-check. Confirmed pattern turns green. Enter on a green pattern starts analysis immediately.
 - **State persistence:** `usePersistedState` stores tab, URL inputs, pattern, model in `sessionStorage` (per-tab, survives page refresh).
-- **Frontend routes:** Each source type has its own route (`/analysis/youtube`, `/rumble`, `/web`, `/file`), not tabs on a single page as older code might imply.
+- **Frontend routes:** Each source type has its own route (`/analysis/youtube`, `/analysis/rumble`)
 
 ## External Dependencies (CLI Tools)
 
@@ -127,16 +124,14 @@ Orchestrators (`*_orchestrator.py`) follow this pattern:
 ## Database
 
 - File: `marina_jacobi.db` (ignored by git, SQLite via aiosqlite)
-- Single table `analysis_jobs` with columns: id, source, url, file_path, pattern, status, transcript, result, error, metadata_json (JSON), created_at, updated_at
+- Single table `analysis_jobs` with columns: id, source, url, pattern, status, transcript, result, error, metadata_json (JSON), created_at, updated_at
 - Auto-created on first run (`init_db` in `main.py` lifespan)
 
 ## Notes & Gotchas
 
 - DB is in `.gitignore` — always present locally after first run
-- `backend/routers/__init__.py` exists (empty); `backend/services/` has **no** `__init__.py` — rely on absolute imports like `from backend.services.fabric_service import ...`
+- Backend uses absolute imports from `backend.services.*`
 - `sys.path.insert(0, ...)` in `main.py` is a hack to make `from backend...` imports work when run as `uvicorn backend.main:app` — do not remove it
-- `uploads/` directory stores uploaded files; `.gitkeep` keeps it in git
-- OpenRouter pricing is fetched live and cached 5 minutes
-- No tests exist anywhere in the repo
+No tests exist anywhere in the repo
 - The frontend ships `oxlint` (no ESLint), configured via `.oxlintrc.json`
 - `.venv` is currently at repo root (not `backend/.venv` as `run.sh` expects) — may need symlink or recreation
