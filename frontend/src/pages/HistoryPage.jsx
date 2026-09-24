@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { getHistory } from '../api/client'
 import { Clock, MonitorPlay, Video, Globe, Upload, Copy, ExternalLink, ChevronDown, ChevronUp, Search, X } from 'lucide-react'
 import MetadataDisplay from '../components/MetadataDisplay'
+import MarkdownResult from '../components/MarkdownResult'
 
 const SOURCE_ICONS = {
   youtube: MonitorPlay,
@@ -167,7 +168,7 @@ export default function HistoryPage() {
                   {job.result && (
                     <div>
                       <div className="text-xs font-medium text-gray-400 mb-1">Result</div>
-                      <div className="bg-gray-800/50 rounded p-3 text-sm whitespace-pre-wrap max-h-60 overflow-y-auto">
+                      <div className="bg-gray-800/50 rounded p-3">
                         {(() => {
                           const meta = job.metadata_json || {};
                           const lines = [
@@ -186,7 +187,13 @@ export default function HistoryPage() {
                             meta.estimated_cost != null && `Pattern Cost: $${Number(meta.estimated_cost).toFixed(4)}`,
                             meta.pricing_source && `Pricing Source: ${meta.pricing_source}`,
                           ].filter(Boolean);
-                          return (lines.length > 0 ? lines.join('\n') + '\n\n' : '') + job.result;
+                          const metaText = lines.length > 0 ? lines.join('\n') : null;
+                          return (
+                            <>
+                              {metaText && <pre className="text-xs text-gray-400 whitespace-pre-wrap mb-3 pb-3 border-b border-gray-700">{metaText}</pre>}
+                              <MarkdownResult content={job.result} />
+                            </>
+                          );
                         })()}
                       </div>
                     </div>

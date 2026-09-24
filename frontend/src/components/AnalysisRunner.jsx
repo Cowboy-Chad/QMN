@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { pollJob } from '../api/client'
 import { Loader2 } from 'lucide-react'
 import { useJob } from '../context/JobContext'
+import MarkdownResult from './MarkdownResult'
 
 export default function AnalysisRunner({ jobId }) {
   const { setIsJobRunning } = useJob()
@@ -115,8 +116,11 @@ function ResultDisplay({ result, transcript, meta }) {
 
   return (
     <div className="space-y-3">
-      <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 whitespace-pre-wrap text-sm leading-relaxed">
-        {fullResult}
+      <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+        {metaLines.length > 0 && (
+          <pre className="text-xs text-gray-400 whitespace-pre-wrap mb-3 pb-3 border-b border-gray-700">{metaLines.join('\n')}</pre>
+        )}
+        <MarkdownResult content={result} />
       </div>
       <div className="flex gap-2">
         <button onClick={handleCopy} className={`px-3 py-1.5 rounded text-sm ${copied ? 'bg-green-600 hover:bg-green-500' : 'bg-gray-700 hover:bg-gray-600'}`}>
