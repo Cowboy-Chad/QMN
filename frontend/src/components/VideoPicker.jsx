@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Search, Loader2 } from 'lucide-react'
 import { getChannelVideos } from '../api/client'
 
@@ -9,6 +9,7 @@ export default function VideoPicker({ onSelect, onClear }) {
   const [count, setCount] = useState(0)
   const [error, setError] = useState('')
   const [open, setOpen] = useState(false)
+  const inputRef = useRef(null)
 
   useEffect(() => {
     let cancelled = false
@@ -46,10 +47,12 @@ export default function VideoPicker({ onSelect, onClear }) {
       <div className="relative">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
         <input
+          ref={inputRef}
           type="text"
           value={query}
           onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
           onFocus={() => setOpen(true)}
+          onBlur={() => setOpen(false)}
           onDoubleClick={() => { setQuery(''); onClear?.() }}
           placeholder={loading ? `Loading all channel videos...` : `Search ${count} videos by title...`}
           className="w-full pl-9 pr-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-violet-500 transition"
@@ -77,10 +80,12 @@ export default function VideoPicker({ onSelect, onClear }) {
             filtered.map((v, i) => (
               <button
                 key={v.url || i}
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => {
                   onSelect(v.url, v.title)
                   setQuery(v.title || '')
                   setOpen(false)
+                  inputRef.current?.blur()
                 }}
                 className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-700 transition border-b border-gray-700/50 last:border-0"
               >
@@ -95,9 +100,6 @@ export default function VideoPicker({ onSelect, onClear }) {
         </div>
       )}
 
-      {open && (
-        <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-      )}
     </div>
   )
 }
