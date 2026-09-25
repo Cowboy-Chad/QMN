@@ -6,13 +6,11 @@ from datetime import datetime
 class YouTubeRequest(BaseModel):
     url: str = ""
     pattern: str
-    model: Optional[str] = None
 
 
 class RumbleRequest(BaseModel):
     url: str = ""
     pattern: str
-    model: Optional[str] = None
 
 
 class JobStatusResponse(BaseModel):

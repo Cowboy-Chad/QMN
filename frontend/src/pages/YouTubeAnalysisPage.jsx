@@ -1,26 +1,17 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { MonitorPlay } from 'lucide-react'
 import PatternSelector from '../components/PatternSelector'
 import AnalysisRunner from '../components/AnalysisRunner'
 import usePersistedState from '../hooks/usePersistedState'
-import { startYouTubeAnalysis, getModels, checkYouTubeResult } from '../api/client'
+import { startYouTubeAnalysis, checkYouTubeResult } from '../api/client'
 
 export default function YouTubeAnalysisPage() {
   const [url, setUrl] = usePersistedState('yt-url', '')
   const [pattern, setPattern] = usePersistedState('yt-pattern', 'create_micro_summary')
-  const [model, setModel] = usePersistedState('analysis-model', '')
-  const [models, setModels] = useState([])
   const [jobId, setJobId] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [checkMessage, setCheckMessage] = useState('')
-
-  useEffect(() => {
-    getModels().then((data) => {
-      setModels(data.models || [])
-      setModel((current) => current || data.default || '')
-    }).catch((e) => console.error('Failed to load models:', e))
-  }, [])
 
   const handleAnalyze = async () => {
     setSubmitting(true)
@@ -28,7 +19,7 @@ export default function YouTubeAnalysisPage() {
     setJobId('')
     setCheckMessage('')
     try {
-      const data = await startYouTubeAnalysis({ url, pattern, model: model || undefined })
+      const data = await startYouTubeAnalysis({ url, pattern })
       setJobId(data.job_id)
     } catch (e) {
       setError(e.message)
@@ -42,7 +33,7 @@ export default function YouTubeAnalysisPage() {
     setCheckMessage('')
     setJobId('')
     try {
-      const data = await checkYouTubeResult(url, pattern, model || undefined)
+      const data = await checkYouTubeResult(url, pattern)
       if (data.found) {
         setJobId(data.job.id)
       } else {
@@ -56,22 +47,6 @@ export default function YouTubeAnalysisPage() {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">YouTube Analysis</h1>
-
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-300 mb-1">Model</label>
-        <select
-          value={model}
-          onChange={(e) => setModel(e.target.value)}
-          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
-        >
-          {models.map((m) => (
-            <option key={m} value={m}>{m}</option>
-          ))}
-        </select>
-        <p className="mt-1 text-xs text-gray-500">
-          {model ? `Will analyze with: ${model}` : 'Using default model'}
-        </p>
-      </div>
 
       <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-6 space-y-4">
         <div>

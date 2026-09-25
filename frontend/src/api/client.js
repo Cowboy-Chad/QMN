@@ -42,15 +42,13 @@ export function getPatterns() {
   return request('/patterns')
 }
 
-export function checkYouTubeResult(url, pattern, model) {
+export function checkYouTubeResult(url, pattern) {
   const params = new URLSearchParams({ url, pattern })
-  if (model) params.set('model', model)
   return request(`/youtube/check-result?${params.toString()}`)
 }
 
-export function checkRumbleResult(url, pattern, model) {
+export function checkRumbleResult(url, pattern) {
   const params = new URLSearchParams({ url, pattern })
-  if (model) params.set('model', model)
   return request(`/rumble/check-result?${params.toString()}`)
 }
 

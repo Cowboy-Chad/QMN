@@ -1,29 +1,20 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Video } from 'lucide-react'
 import PatternSelector from '../components/PatternSelector'
 import AnalysisRunner from '../components/AnalysisRunner'
 import VideoPicker from '../components/VideoPicker'
 import usePersistedState from '../hooks/usePersistedState'
-import { startRumbleAnalysis, getModels, checkRumbleResult } from '../api/client'
+import { startRumbleAnalysis, checkRumbleResult } from '../api/client'
 import { useJob } from '../context/JobContext'
 
 export default function RumbleAnalysisPage() {
   const { isJobRunning } = useJob()
   const [url, setUrl] = usePersistedState('rumble-url', '')
   const [pattern, setPattern] = usePersistedState('rumble-pattern', 'create_micro_summary')
-  const [model, setModel] = usePersistedState('analysis-model', '')
-  const [models, setModels] = useState([])
   const [jobId, setJobId] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [checkMessage, setCheckMessage] = useState('')
-
-  useEffect(() => {
-    getModels().then((data) => {
-      setModels(data.models || [])
-      setModel((current) => current || data.default || '')
-    }).catch((e) => console.error('Failed to load models:', e))
-  }, [])
 
   const handleAnalyze = async () => {
     setSubmitting(true)
@@ -31,7 +22,7 @@ export default function RumbleAnalysisPage() {
     setJobId('')
     setCheckMessage('')
     try {
-      const data = await startRumbleAnalysis({ url, pattern, model: model || undefined })
+      const data = await startRumbleAnalysis({ url, pattern })
       setJobId(data.job_id)
     } catch (e) {
       setError(e.message)
@@ -45,7 +36,7 @@ export default function RumbleAnalysisPage() {
     setCheckMessage('')
     setJobId('')
     try {
-      const data = await checkRumbleResult(url, pattern, model || undefined)
+      const data = await checkRumbleResult(url, pattern)
       if (data.found) {
         setJobId(data.job.id)
       } else {
@@ -59,22 +50,6 @@ export default function RumbleAnalysisPage() {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">Rumble Analysis</h1>
-
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-300 mb-1">Model</label>
-        <select
-          value={model}
-          onChange={(e) => setModel(e.target.value)}
-          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
-        >
-          {models.map((m) => (
-            <option key={m} value={m}>{m}</option>
-          ))}
-        </select>
-        <p className="mt-1 text-xs text-gray-500">
-          {model ? `Will analyze with: ${model}` : 'Using default model'}
-        </p>
-      </div>
 
       <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-6 space-y-4">
         <div>

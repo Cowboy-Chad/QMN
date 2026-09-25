@@ -2,7 +2,7 @@ from fastapi import APIRouter
 
 from backend.schemas import JobStatusResponse, PatternInfo
 from backend.services.database_helpers import get_job, list_jobs, find_existing_result
-from backend.services.fabric_service import list_patterns, list_models, DEFAULT_MODEL as FABRIC_DEFAULT_MODEL
+from backend.services.fabric_service import list_patterns, DEFAULT_MODEL as FABRIC_DEFAULT_MODEL
 
 router = APIRouter(prefix="/api")
 
@@ -33,5 +33,4 @@ async def get_patterns():
 
 @router.get("/models")
 async def get_models():
-    models = await list_models()
-    return {"models": models, "default": FABRIC_DEFAULT_MODEL}
+    return {"models": [], "default": FABRIC_DEFAULT_MODEL}

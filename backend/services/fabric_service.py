@@ -57,26 +57,6 @@ async def list_patterns() -> list[dict]:
     return [{"name": n, "description": ""} for n in names]
 
 
-async def list_models() -> list[str]:
-    proc = await asyncio.create_subprocess_exec(
-        "fabric",
-        "--listmodels",
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    stdout, stderr = await proc.communicate()
-    if proc.returncode != 0:
-        raise RuntimeError(f"fabric --listmodels failed: {stderr.decode()}")
-    models = []
-    for line in stdout.decode().splitlines():
-        line = line.strip()
-        if "|" in line:
-            parts = line.split("|")
-            if len(parts) >= 2:
-                models.append(parts[1].strip())
-    return models
-
-
 async def read_pattern(pattern: str) -> str:
     proc = await asyncio.create_subprocess_exec(
         "fabric",
