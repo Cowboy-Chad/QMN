@@ -22,7 +22,9 @@ async def run_rumble_analysis(url: str, pattern: str, model: str | None = None) 
     if existing_id:
         return existing_id
 
-    job_id = await create_job(source="rumble", url=url, pattern=pattern)
+    m = re.search(r'rumble\.com/(v[a-z0-9]+)', url)
+    video_id = m.group(1) if m else None
+    job_id = await create_job(source="rumble", url=url, pattern=pattern, video_id=video_id)
     task = asyncio.create_task(_pipeline(job_id, url, pattern, model))
     _jobs[job_id] = task
     return job_id
@@ -31,6 +33,7 @@ async def run_rumble_analysis(url: str, pattern: str, model: str | None = None) 
 async def _pipeline(job_id: str, url: str, pattern: str, model: str | None):
     t0 = time.time()
     meta = {}
+    channel_id = None
 
     try:
         await update_job_status(job_id, "running")
@@ -43,7 +46,9 @@ async def _pipeline(job_id: str, url: str, pattern: str, model: str | None):
         except (asyncio.TimeoutError, Exception):
             meta = {}
 
-        channel = (meta.get("channel") or "").lower()
+        channel_id = meta.get("channel") or None
+
+        channel = (channel_id or "").lower()
         if channel and channel != RUMBLE_CHANNEL_LOWER:
             raise ValueError(
                 f"This app only supports videos from channel '{RUMBLE_CHANNEL}'. "
@@ -70,11 +75,11 @@ async def _pipeline(job_id: str, url: str, pattern: str, model: str | None):
             **cost_info,
         })
 
-        await update_job_status(job_id, "completed", transcript=transcript, result=result, metadata_json=meta)
+        await update_job_status(job_id, "completed", transcript=transcript, result=result, metadata_json=meta, channel_id=channel_id)
 
     except Exception as e:
         processing_time = round(time.time() - t0, 1)
         meta.update({"fabric_pattern": pattern, "processing_time_seconds": processing_time})
-        await update_job_status(job_id, "failed", error=str(e), metadata_json=meta)
+        await update_job_status(job_id, "failed", error=str(e), metadata_json=meta, channel_id=channel_id)
     finally:
         _jobs.pop(job_id, None)

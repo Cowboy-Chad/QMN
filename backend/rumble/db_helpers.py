@@ -15,6 +15,8 @@ async def get_job(job_id: str) -> Optional[JobStatusResponse]:
             id=job.id,
             source=job.source,
             url=job.url,
+            video_id=job.video_id,
+            channel_id=job.channel_id,
             pattern=job.pattern,
             status=job.status,
             transcript=job.transcript,
@@ -31,6 +33,8 @@ async def _job_to_response(job: AnalysisJob) -> JobStatusResponse:
         id=job.id,
         source=job.source,
         url=job.url,
+        video_id=job.video_id,
+        channel_id=job.channel_id,
         pattern=job.pattern,
         status=job.status,
         transcript=job.transcript,
@@ -120,13 +124,15 @@ async def find_existing_transcript(source: str, url: str) -> str | None:
 
 
 async def create_job(
-    source: str, url: str | None, pattern: str, file_path: str | None = None
+    source: str, url: str | None, pattern: str, file_path: str | None = None,
+    video_id: str | None = None,
 ) -> str:
     async with async_session() as session:
         job = AnalysisJob(
             source=source,
             url=url,
             file_path=file_path,
+            video_id=video_id,
             pattern=pattern,
             status="pending",
         )

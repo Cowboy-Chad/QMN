@@ -13,6 +13,18 @@ async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
+    # Migration: add new columns to existing tables (safe to run multiple times)
+    async with engine.begin() as conn:
+        def _migrate(connection):
+            import sqlalchemy as sa
+            inspector = sa.inspect(connection)
+            cols = {c["name"] for c in inspector.get_columns("analysis_jobs")}
+            if "video_id" not in cols:
+                connection.execute(sa.text("ALTER TABLE analysis_jobs ADD COLUMN video_id VARCHAR"))
+            if "channel_id" not in cols:
+                connection.execute(sa.text("ALTER TABLE analysis_jobs ADD COLUMN channel_id VARCHAR"))
+        await conn.run_sync(_migrate)
+
 
 async def get_session() -> AsyncSession:
     async with async_session() as session:

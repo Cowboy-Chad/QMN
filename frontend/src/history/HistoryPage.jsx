@@ -45,6 +45,8 @@ export default function HistoryPage() {
       const haystack = [
         job.url,
         job.file_path,
+        job.video_id,
+        job.channel_id,
         job.pattern,
         job.source,
         job.status,
