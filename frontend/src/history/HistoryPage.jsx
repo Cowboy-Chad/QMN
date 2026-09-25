@@ -136,7 +136,7 @@ export default function HistoryPage() {
                       <span className="text-xs px-1.5 py-0.5 rounded bg-red-900/50 text-red-300">Failed</span>
                     )}
                   </div>
-                  <div className="text-xs text-gray-200 mt-0.5 leading-relaxed">
+                  <div className="text-sm text-gray-200 mt-0.5 leading-relaxed">
                     <div><span className="text-violet-400">Source:</span> {job.source === 'rumble' ? "Marina Jacobi's Rumble Channel" : (job.source || '—')}</div>
                     <div><span className="text-violet-400">Pattern Used:</span> {job.pattern}</div>
                     <div><span className="text-violet-400">At UTC Time:</span> {(function() {
