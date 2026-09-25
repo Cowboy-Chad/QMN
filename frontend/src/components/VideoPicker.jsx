@@ -10,6 +10,19 @@ export default function VideoPicker({ onSelect, onClear }) {
   const [error, setError] = useState('')
   const [open, setOpen] = useState(false)
   const inputRef = useRef(null)
+  const lastClick = useRef(0)
+
+  const handleInputClick = () => {
+    const now = Date.now()
+    if (now - lastClick.current < 400) {
+      // Double-click / double-tap detected
+      setQuery('')
+      onClear?.()
+      lastClick.current = 0
+    } else {
+      lastClick.current = now
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -53,7 +66,7 @@ export default function VideoPicker({ onSelect, onClear }) {
           onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
           onFocus={() => setOpen(true)}
           onBlur={() => setOpen(false)}
-          onDoubleClick={() => { setQuery(''); onClear?.() }}
+          onClick={handleInputClick}
           placeholder={loading ? `Loading all channel videos...` : `Search ${count} videos by title...`}
           className="w-full pl-9 pr-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-violet-500 transition"
         />
