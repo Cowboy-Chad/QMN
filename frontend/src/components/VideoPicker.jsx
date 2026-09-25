@@ -9,7 +9,9 @@ export default function VideoPicker({ onSelect, onClear }) {
   const [count, setCount] = useState(0)
   const [error, setError] = useState('')
   const [open, setOpen] = useState(false)
+  const [highlightedIndex, setHighlightedIndex] = useState(-1)
   const inputRef = useRef(null)
+  const listRef = useRef(null)
   const lastClick = useRef(0)
 
   const handleInputClick = () => {
@@ -63,10 +65,30 @@ export default function VideoPicker({ onSelect, onClear }) {
           ref={inputRef}
           type="text"
           value={query}
-          onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
+          onChange={(e) => { setQuery(e.target.value); setOpen(true); setHighlightedIndex(-1) }}
           onFocus={() => setOpen(true)}
           onBlur={() => setOpen(false)}
           onClick={handleInputClick}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowDown') {
+              e.preventDefault()
+              setHighlightedIndex((prev) =>
+                prev < filtered.length - 1 ? prev + 1 : 0
+              )
+            } else if (e.key === 'ArrowUp') {
+              e.preventDefault()
+              setHighlightedIndex((prev) =>
+                prev > 0 ? prev - 1 : filtered.length - 1
+              )
+            } else if (e.key === 'Enter' && highlightedIndex >= 0 && filtered[highlightedIndex]) {
+              e.preventDefault()
+              const v = filtered[highlightedIndex]
+              onSelect(v.url, v.title)
+              setQuery(v.title || '')
+              setOpen(false)
+              inputRef.current?.blur()
+            }
+          }}
           placeholder={loading ? `Loading all channel videos...` : `Search ${count} videos by title...`}
           className="w-full pl-9 pr-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-violet-500 transition"
         />
@@ -100,7 +122,17 @@ export default function VideoPicker({ onSelect, onClear }) {
                   setOpen(false)
                   inputRef.current?.blur()
                 }}
-                className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-700 transition border-b border-gray-700/50 last:border-0"
+                onMouseEnter={() => setHighlightedIndex(i)}
+                className={`w-full text-left px-3 py-2 text-sm transition border-b border-gray-700/50 last:border-0 ${
+                  i === highlightedIndex
+                    ? 'bg-violet-600/30 text-white'
+                    : 'text-gray-200 hover:bg-gray-700'
+                }`}
+                ref={(el) => {
+                  if (i === highlightedIndex && el) {
+                    el.scrollIntoView({ block: 'nearest' })
+                  }
+                }}
               >
                 <div className="font-medium leading-snug">{v.title || 'Untitled'}</div>
                 <div className="text-xs text-gray-500 mt-0.5">
