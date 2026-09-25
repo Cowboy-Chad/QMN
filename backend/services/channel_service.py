@@ -131,7 +131,10 @@ async def list_channel_videos(max_results: int = MAX_RESULTS) -> list[dict]:
 
         # 2. If cache is stale, trigger a background refresh (non-blocking)
         if updated_at:
-            age = (datetime.now(timezone.utc) - updated_at).total_seconds()
+            # DB stores naive UTC datetimes; make comparison safe
+            now_naive = datetime.now(timezone.utc).replace(tzinfo=None)
+            cache_stored = updated_at.replace(tzinfo=None) if updated_at.tzinfo else updated_at
+            age = (now_naive - cache_stored).total_seconds()
             if age > REFRESH_INTERVAL and _background_task is None:
                 _background_task = asyncio.create_task(_refresh_cache())
 

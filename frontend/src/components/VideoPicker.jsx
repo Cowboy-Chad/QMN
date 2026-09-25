@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { Search, Loader2 } from 'lucide-react'
 import { getChannelVideos } from '../api/client'
 
@@ -9,21 +9,25 @@ export default function VideoPicker({ onSelect }) {
   const [count, setCount] = useState(0)
   const [error, setError] = useState('')
   const [open, setOpen] = useState(false)
-  const loaded = useRef(false)
 
   useEffect(() => {
-    if (loaded.current) return
-    loaded.current = true
+    let cancelled = false
     getChannelVideos(500)
       .then((data) => {
+        if (cancelled) return
         if (data.videos) {
           setVideos(data.videos)
           setCount(data.videos.length)
         }
         if (data.error) setError(data.error)
       })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false))
+      .catch((e) => {
+        if (!cancelled) setError(e.message)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => { cancelled = true }
   }, [])
 
   const filtered = query.trim()
