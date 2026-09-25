@@ -47,6 +47,8 @@ export default function HistoryPage() {
         job.file_path,
         job.video_id,
         job.channel_id,
+        job.channel_title,
+        job.video_title,
         job.pattern,
         job.source,
         job.status,

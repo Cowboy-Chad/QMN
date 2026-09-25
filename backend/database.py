@@ -19,10 +19,9 @@ async def init_db():
             import sqlalchemy as sa
             inspector = sa.inspect(connection)
             cols = {c["name"] for c in inspector.get_columns("analysis_jobs")}
-            if "video_id" not in cols:
-                connection.execute(sa.text("ALTER TABLE analysis_jobs ADD COLUMN video_id VARCHAR"))
-            if "channel_id" not in cols:
-                connection.execute(sa.text("ALTER TABLE analysis_jobs ADD COLUMN channel_id VARCHAR"))
+            for col in ("video_id", "channel_id", "channel_title", "video_title"):
+                if col not in cols:
+                    connection.execute(sa.text(f"ALTER TABLE analysis_jobs ADD COLUMN {col} VARCHAR"))
         await conn.run_sync(_migrate)
 
 

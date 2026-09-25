@@ -14,6 +14,8 @@ class JobStatusResponse(BaseModel):
     url: Optional[str] = None
     video_id: Optional[str] = None
     channel_id: Optional[str] = None
+    channel_title: Optional[str] = None
+    video_title: Optional[str] = None
     pattern: str
     status: str
     transcript: Optional[str] = None

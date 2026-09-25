@@ -29,6 +29,8 @@ async def _pipeline(job_id: str, url: str, pattern: str, model: str | None):
     t0 = time.time()
     meta = {}
     channel_id = None
+    channel_title = None
+    video_title = None
 
     try:
         await update_job_status(job_id, "running")
@@ -42,6 +44,8 @@ async def _pipeline(job_id: str, url: str, pattern: str, model: str | None):
             meta = {}
 
         channel_id = meta.get("channel") or None
+        channel_title = meta.get("channel") or None
+        video_title = meta.get("title") or None
 
         transcript = await find_existing_transcript("youtube", url)
 
@@ -62,11 +66,11 @@ async def _pipeline(job_id: str, url: str, pattern: str, model: str | None):
             **cost_info,
         })
 
-        await update_job_status(job_id, "completed", transcript=transcript, result=result, metadata_json=meta, channel_id=channel_id)
+        await update_job_status(job_id, "completed", transcript=transcript, result=result, metadata_json=meta, channel_id=channel_id, channel_title=channel_title, video_title=video_title)
 
     except Exception as e:
         processing_time = round(time.time() - t0, 1)
         meta.update({"fabric_pattern": pattern, "processing_time_seconds": processing_time})
-        await update_job_status(job_id, "failed", error=str(e), metadata_json=meta, channel_id=channel_id)
+        await update_job_status(job_id, "failed", error=str(e), metadata_json=meta, channel_id=channel_id, channel_title=channel_title, video_title=video_title)
     finally:
         _jobs.pop(job_id, None)

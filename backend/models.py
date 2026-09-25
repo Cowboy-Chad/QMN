@@ -17,6 +17,8 @@ class AnalysisJob(Base):
     file_path = Column(Text, nullable=True)
     video_id = Column(String, nullable=True)
     channel_id = Column(String, nullable=True)
+    channel_title = Column(Text, nullable=True)
+    video_title = Column(Text, nullable=True)
     pattern = Column(String, nullable=False)
     status = Column(String, default="pending")  # pending | running | completed | failed
     transcript = Column(Text, nullable=True)
