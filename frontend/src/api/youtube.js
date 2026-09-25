@@ -19,7 +19,7 @@ export function startYouTubeAnalysis(data) {
   })
 }
 
-export function checkYouTubeResult(url, pattern) {
-  const params = new URLSearchParams({ url, pattern })
+export function checkYouTubeResult(videoUrl, pattern) {
+  const params = new URLSearchParams({ video_url: videoUrl, pattern })
   return request(`/youtube/check-result?${params.toString()}`)
 }

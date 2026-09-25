@@ -19,7 +19,7 @@ export default function YouTubeAnalysisPage() {
     setJobId('')
     setCheckMessage('')
     try {
-      const data = await startYouTubeAnalysis({ url, pattern })
+      const data = await startYouTubeAnalysis({ video_url: url, pattern })
       setJobId(data.job_id)
     } catch (e) {
       setError(e.message)

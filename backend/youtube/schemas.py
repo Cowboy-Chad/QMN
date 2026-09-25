@@ -4,14 +4,14 @@ from datetime import datetime
 
 
 class YouTubeRequest(BaseModel):
-    url: str = ""
+    video_url: str = ""
     pattern: str
 
 
 class JobStatusResponse(BaseModel):
     id: str
     source: str
-    url: Optional[str] = None
+    video_url: Optional[str] = None
     video_id: Optional[str] = None
     channel_id: Optional[str] = None
     channel_title: Optional[str] = None

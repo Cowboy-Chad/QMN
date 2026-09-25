@@ -43,7 +43,7 @@ export default function HistoryPage() {
         return d.toLocaleString('en-US', { timeZone: 'UTC' });
       })()
       const haystack = [
-        job.url,
+        job.video_url,
         job.file_path,
         job.video_id,
         job.channel_id,
@@ -139,8 +139,8 @@ export default function HistoryPage() {
                     </div>
                   )}
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium truncate"><span className="text-violet-400">URL:</span> {job.url ? (
-                      <a href={job.url} target="_blank" rel="noreferrer" className="text-blue-400 hover:text-blue-300 hover:underline">{job.url}</a>
+                    <span className="text-sm font-medium truncate"><span className="text-violet-400">Video URL:</span> {job.video_url ? (
+                      <a href={job.video_url} target="_blank" rel="noreferrer" className="text-blue-400 hover:text-blue-300 hover:underline">{job.video_url}</a>
                     ) : (job.file_path || '—')}</span>
                     {job.status === 'failed' && (
                       <span className="text-xs px-1.5 py-0.5 rounded bg-red-900/50 text-red-300">Failed</span>
@@ -238,8 +238,8 @@ export default function HistoryPage() {
                         <Copy size={12} /> Copy Transcript
                       </button>
                     )}
-                    {job.url && (
-                      <a href={job.url} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded">
+                    {job.video_url && (
+                      <a href={job.video_url} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded">
                         <ExternalLink size={12} /> Open This Video
                       </a>
                     )}

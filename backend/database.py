@@ -13,11 +13,18 @@ async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    # Migration: add new columns to existing tables (safe to run multiple times)
+    # Migration: add/rename columns in existing tables (safe to run multiple times)
     async with engine.begin() as conn:
         def _migrate(connection):
             import sqlalchemy as sa
             inspector = sa.inspect(connection)
+            cols = {c["name"] for c in inspector.get_columns("analysis_jobs")}
+
+            # Rename url → video_url
+            if "url" in cols and "video_url" not in cols:
+                connection.execute(sa.text("ALTER TABLE analysis_jobs RENAME COLUMN url TO video_url"))
+
+            # Refresh column list after rename
             cols = {c["name"] for c in inspector.get_columns("analysis_jobs")}
             for col in ("video_id", "channel_id", "channel_title", "video_title"):
                 if col not in cols:

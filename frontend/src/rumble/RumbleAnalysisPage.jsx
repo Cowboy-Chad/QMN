@@ -22,7 +22,7 @@ export default function RumbleAnalysisPage() {
     setJobId('')
     setCheckMessage('')
     try {
-      const data = await startRumbleAnalysis({ url, pattern })
+      const data = await startRumbleAnalysis({ video_url: url, pattern })
       setJobId(data.job_id)
     } catch (e) {
       setError(e.message)

@@ -14,7 +14,7 @@ async def get_job(job_id: str) -> Optional[JobStatusResponse]:
         return JobStatusResponse(
             id=job.id,
             source=job.source,
-            url=job.url,
+            video_url=job.video_url,
             video_id=job.video_id,
             channel_id=job.channel_id,
             channel_title=job.channel_title,
@@ -34,7 +34,7 @@ async def _job_to_response(job: AnalysisJob) -> JobStatusResponse:
     return JobStatusResponse(
         id=job.id,
         source=job.source,
-        url=job.url,
+        video_url=job.video_url,
         video_id=job.video_id,
         channel_id=job.channel_id,
         channel_title=job.channel_title,
@@ -61,7 +61,7 @@ async def find_existing_result(
         stmt = (
             select(AnalysisJob)
             .where(AnalysisJob.source == source)
-            .where(AnalysisJob.url == url)
+            .where(AnalysisJob.video_url == url)
             .where(AnalysisJob.pattern == pattern)
             .where(AnalysisJob.status == "completed")
             .where(AnalysisJob.result.isnot(None))
@@ -89,7 +89,7 @@ async def find_existing_job_id(
         stmt = (
             select(AnalysisJob)
             .where(AnalysisJob.source == source)
-            .where(AnalysisJob.url == url)
+            .where(AnalysisJob.video_url == url)
             .where(AnalysisJob.pattern == pattern)
             .where(AnalysisJob.status == "completed")
             .where(AnalysisJob.result.isnot(None))
@@ -114,7 +114,7 @@ async def find_existing_transcript(source: str, url: str) -> str | None:
         stmt = (
             select(AnalysisJob)
             .where(AnalysisJob.source == source)
-            .where(AnalysisJob.url == url)
+            .where(AnalysisJob.video_url == url)
             .where(AnalysisJob.transcript.isnot(None))
             .where(AnalysisJob.status.in_(["completed"]))
             .order_by(AnalysisJob.created_at.desc())
@@ -134,7 +134,7 @@ async def create_job(
     async with async_session() as session:
         job = AnalysisJob(
             source=source,
-            url=url,
+            video_url=url,
             file_path=file_path,
             video_id=video_id,
             pattern=pattern,

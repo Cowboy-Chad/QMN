@@ -13,7 +13,7 @@ class AnalysisJob(Base):
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     source = Column(String, nullable=False)  # youtube | rumble
-    url = Column(Text, nullable=True)
+    video_url = Column(Text, nullable=True)
     file_path = Column(Text, nullable=True)
     video_id = Column(String, nullable=True)
     channel_id = Column(String, nullable=True)

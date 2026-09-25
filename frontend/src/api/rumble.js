@@ -19,8 +19,8 @@ export function startRumbleAnalysis(data) {
   })
 }
 
-export function checkRumbleResult(url, pattern) {
-  const params = new URLSearchParams({ url, pattern })
+export function checkRumbleResult(videoUrl, pattern) {
+  const params = new URLSearchParams({ video_url: videoUrl, pattern })
   return request(`/rumble/check-result?${params.toString()}`)
 }
 

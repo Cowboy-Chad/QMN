@@ -25,7 +25,7 @@ async def list_jobs(
             JobStatusResponse(
                 id=j.id,
                 source=j.source,
-                url=j.url,
+                video_url=j.video_url,
                 video_id=j.video_id,
                 channel_id=j.channel_id,
                 channel_title=j.channel_title,
@@ -51,7 +51,7 @@ async def get_job(job_id: str) -> Optional[JobStatusResponse]:
         return JobStatusResponse(
             id=job.id,
             source=job.source,
-            url=job.url,
+            video_url=job.video_url,
             video_id=job.video_id,
             channel_id=job.channel_id,
             channel_title=job.channel_title,

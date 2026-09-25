@@ -9,7 +9,7 @@ router = APIRouter(prefix="/api/rumble")
 
 @router.post("/analyze")
 async def analyze_rumble(body: RumbleRequest):
-    job_id = await run_rumble_analysis(url=body.url, pattern=body.pattern)
+    job_id = await run_rumble_analysis(url=body.video_url, pattern=body.pattern)
     return {"job_id": job_id, "status": "pending"}
 
 
@@ -22,8 +22,8 @@ async def get_rumble_job(job_id: str):
 
 
 @router.get("/check-result")
-async def check_rumble_result(url: str, pattern: str):
-    job = await find_existing_result("rumble", url, pattern, None)
+async def check_rumble_result(video_url: str, pattern: str):
+    job = await find_existing_result("rumble", video_url, pattern, None)
     if job is None:
         return {"found": False}
     return {"found": True, "job": job}
