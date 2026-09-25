@@ -129,7 +129,9 @@ export default function HistoryPage() {
                     </div>
                   )}
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium truncate"><span className="text-violet-400">URL:</span> {job.url || job.file_path || '—'}</span>
+                    <span className="text-sm font-medium truncate"><span className="text-violet-400">URL:</span> {job.url ? (
+                      <a href={job.url} target="_blank" rel="noreferrer" className="text-blue-400 hover:text-blue-300 hover:underline">{job.url}</a>
+                    ) : (job.file_path || '—')}</span>
                     {job.status === 'failed' && (
                       <span className="text-xs px-1.5 py-0.5 rounded bg-red-900/50 text-red-300">Failed</span>
                     )}
