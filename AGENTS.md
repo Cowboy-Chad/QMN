@@ -35,9 +35,17 @@ npm run dev                           # Vite on localhost:5173
 ## Project Structure
 
 - `backend/main.py` — FastAPI entry point, CORS, lifespan (calls `init_db`)
-- `backend/routers/*.py` — One router per source (`youtube`, `rumble`) + `shared_router` for health/history/patterns/models/jobs
-- `backend/services/*.py` — Orchestrators (`*_orchestrator.py`) and leaf services (`fabric_service.py`, `openrouter_service.py`, etc.)
-- `frontend/src/App.jsx` — Route definitions (`/analysis/youtube`, `/analysis/rumble`, `/history`)
+- `backend/youtube/` — YouTube feature package (router, schemas, service, orchestrator, db_helpers)
+- `backend/rumble/` — Rumble feature package (router, schemas, service, orchestrator, channel_service, channel_router, db_helpers)
+- `backend/history/` — History feature package (router, schemas, db_helpers)
+- `backend/services/` — Shared infrastructure services (`fabric_service.py`, `openrouter_service.py`, `cost_service.py`, `metadata_service.py`)
+- `backend/database.py` — Async SQLite engine + session
+- `backend/models.py` — SQLAlchemy models: AnalysisJob, CacheEntry
+- `frontend/src/youtube/` — YouTube analysis page
+- `frontend/src/rumble/` — Rumble analysis page + VideoPicker component
+- `frontend/src/history/` — History page
+- `frontend/src/api/` — Split API clients (`youtube.js`, `rumble.js`, `history.js`, shared `client.js`)
+- `frontend/src/components/` — Shared UI components (Layout, PatternSelector, AnalysisRunner, MarkdownResult, MetadataDisplay)
 - `fabric_service.py` — Shells out to `fabric` CLI via `asyncio.create_subprocess_exec`
 
 ## API Endpoints
