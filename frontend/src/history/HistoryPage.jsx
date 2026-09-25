@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getHistory } from '../api/history'
 import { Clock, MonitorPlay, Video, Copy, ExternalLink, ChevronDown, ChevronUp, Search, X } from 'lucide-react'
-import MetadataDisplay from '../components/MetadataDisplay'
 import MarkdownResult from '../components/MarkdownResult'
 
 const SOURCE_ICONS = {
@@ -20,7 +19,6 @@ export default function HistoryPage() {
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState(null)
-  const [showMetaId, setShowMetaId] = useState(null)
   const [copiedResult, setCopiedResult] = useState(null)
 
   useEffect(() => {
@@ -30,13 +28,6 @@ export default function HistoryPage() {
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [source])
-
-  useEffect(() => {
-    if (!showMetaId) return
-    const handler = (e) => { if (e.key === 'Escape') setShowMetaId(null) }
-    document.addEventListener('keydown', handler)
-    return () => document.removeEventListener('keydown', handler)
-  }, [showMetaId])
 
   // Normalize season/episode spacing so "S3E5" matches "S3 E5" and vice versa
   const norm = (s) => s.replace(/s\s*(\d+)\s*e\s*(\d+)/gi, 's$1e$2')
@@ -154,14 +145,6 @@ export default function HistoryPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
-                  {job.metadata_json && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setShowMetaId(job.id) }}
-                      className="px-2 py-1 text-xs font-medium bg-violet-600/80 hover:bg-violet-600 text-white rounded transition"
-                    >
-                      Show Meta
-                    </button>
-                  )}
                   {expanded ? <ChevronUp size={18} className="text-gray-500" /> : <ChevronDown size={18} className="text-gray-500" />}
                 </div>
               </div>
@@ -253,29 +236,6 @@ export default function HistoryPage() {
           )
         })}
       </div>
-
-      {showMetaId && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-          onClick={() => setShowMetaId(null)}
-        >
-          <div
-            className="bg-gray-800 border border-gray-600 rounded-xl p-6 max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-gray-200">Analysis Metadata</h2>
-              <button
-                onClick={() => setShowMetaId(null)}
-                className="p-1 hover:bg-gray-700 rounded transition"
-              >
-                <X size={18} className="text-gray-400" />
-              </button>
-            </div>
-            <MetadataDisplay meta={jobs.find((j) => j.id === showMetaId)?.metadata_json} />
-          </div>
-        </div>
-      )}
     </div>
   )
 }
