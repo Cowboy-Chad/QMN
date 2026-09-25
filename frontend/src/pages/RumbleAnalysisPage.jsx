@@ -91,7 +91,7 @@ export default function RumbleAnalysisPage() {
           </p>
         </div>
 
-        <VideoPicker onSelect={(videoUrl, videoTitle) => setUrl(videoUrl)} />
+        <VideoPicker onSelect={(videoUrl) => setUrl(videoUrl)} onClear={() => setUrl('')} />
 
         <PatternSelector
           value={pattern}

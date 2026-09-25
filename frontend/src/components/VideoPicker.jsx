@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Search, Loader2 } from 'lucide-react'
 import { getChannelVideos } from '../api/client'
 
-export default function VideoPicker({ onSelect }) {
+export default function VideoPicker({ onSelect, onClear }) {
   const [videos, setVideos] = useState([])
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
@@ -44,6 +44,7 @@ export default function VideoPicker({ onSelect }) {
           value={query}
           onChange={(e) => { setQuery(e.target.value); setOpen(true) }}
           onFocus={() => setOpen(true)}
+          onDoubleClick={() => { setQuery(''); onClear?.() }}
           placeholder={loading ? `Loading all channel videos...` : `Search ${count} videos by title...`}
           className="w-full pl-9 pr-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-violet-500 transition"
         />
