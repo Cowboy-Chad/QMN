@@ -26,15 +26,20 @@ def _get_scraper():
     return _SCRAPER
 
 
-def _parse_season(title: str | None) -> int:
-    """Extract season number from a video title. Returns 999 for unknown."""
+def _parse_season_episode(title: str | None) -> tuple[int, int]:
+    """Extract (season, episode) from a video title. Returns (999, 999) for unknown."""
     if not title:
-        return 999
-    # Patterns: "S5 E3", "Season 5 Episode 3", "Season 5", "S5"
-    m = re.search(r'(?:^|\b)S(?:eason)?[.\s]*(\d+)(?:\s+E(?:p(?:isode)?)?[.\s]*\d+)?', title, re.IGNORECASE)
+        return (999, 999)
+    # Patterns: "S5 E3", "Season 5 Episode 3", "S12E5", "S5 E20"
+    m = re.search(
+        r'(?:^|\b)S(?:eason)?[.\s]*(\d+)(?:[.\s]*E(?:p(?:isode)?)?[.\s]*(\d+))?',
+        title, re.IGNORECASE,
+    )
     if m:
-        return int(m.group(1))
-    return 999
+        season = int(m.group(1))
+        episode = int(m.group(2)) if m.group(2) else 0
+        return (season, episode)
+    return (999, 999)
 
 
 def _parse_video_json(html: str) -> list[dict]:
@@ -58,13 +63,15 @@ def _parse_video_json(html: str) -> list[dict]:
                 title = item.get("title")
                 if title and isinstance(title, str):
                     title = title.rstrip(".… ")
+                season_ep = _parse_season_episode(title)
                 videos.append({
                     "title": title,
                     "url": full_url,
                     "duration": item.get("duration"),
                     "view_count": item.get("view_count"),
                     "upload_date": item.get("upload_date"),
-                    "season": _parse_season(title),
+                    "season": season_ep[0],
+                    "episode": season_ep[1],
                 })
         except (json.JSONDecodeError, Exception):
             continue
@@ -117,7 +124,7 @@ async def _fetch_all_videos(max_results: int) -> list[dict]:
         if not pending:
             break
 
-    all_videos.sort(key=lambda v: v.get("season", 999))
+    all_videos.sort(key=lambda v: (v.get("season", 999), v.get("episode", 0)))
     return all_videos[:max_results]
 
 
