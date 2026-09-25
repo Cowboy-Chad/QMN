@@ -125,20 +125,19 @@ export default function HistoryPage() {
                 <div className="flex-1 min-w-0">
                   {job.metadata_json?.title && (
                     <div className="text-sm font-medium truncate text-gray-200">
-                      <span className="text-gray-500">Title:</span> {job.metadata_json.title}
+                      <span className="text-violet-400">Title:</span> {job.metadata_json.title}
                     </div>
                   )}
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium truncate text-gray-400">URL:</span>
-                    <span className="text-sm font-medium truncate">{job.url || job.file_path || '—'}</span>
+                    <span className="text-sm font-medium truncate"><span className="text-violet-400">URL:</span> {job.url || job.file_path || '—'}</span>
                     {job.status === 'failed' && (
                       <span className="text-xs px-1.5 py-0.5 rounded bg-red-900/50 text-red-300">Failed</span>
                     )}
                   </div>
-                  <div className="text-xs text-gray-500 mt-0.5 leading-relaxed">
-                    <div>Source: {job.source === 'rumble' ? "Marina Jacobi's Rumble Channel" : (job.source || '—')}</div>
-                    <div>Pattern Used: {job.pattern}</div>
-                    <div>At UTC Time: {(function() {
+                  <div className="text-xs text-gray-200 mt-0.5 leading-relaxed">
+                    <div><span className="text-violet-400">Source:</span> {job.source === 'rumble' ? "Marina Jacobi's Rumble Channel" : (job.source || '—')}</div>
+                    <div><span className="text-violet-400">Pattern Used:</span> {job.pattern}</div>
+                    <div><span className="text-violet-400">At UTC Time:</span> {(function() {
                       const d = new Date(job.created_at.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(job.created_at) ? job.created_at : job.created_at + 'Z');
                       return d.toLocaleString('en-US', { timeZone: 'UTC' });
                     })()}</div>
