@@ -37,6 +37,11 @@ export default function HistoryPage() {
     if (!q) return jobs
     return jobs.filter((job) => {
       const m = job.metadata_json || {}
+      // Format the UTC date for searchability
+      const utcDate = (() => {
+        const d = new Date(job.created_at.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(job.created_at) ? job.created_at : job.created_at + 'Z');
+        return d.toLocaleString('en-US', { timeZone: 'UTC' });
+      })()
       const haystack = [
         job.url,
         job.file_path,
@@ -46,6 +51,7 @@ export default function HistoryPage() {
         job.error,
         job.result,
         job.transcript,
+        utcDate,
         m.title,
         m.channel,
         m.channel_url,
