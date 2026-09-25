@@ -26,6 +26,17 @@ def _get_scraper():
     return _SCRAPER
 
 
+def _parse_season(title: str | None) -> int:
+    """Extract season number from a video title. Returns 999 for unknown."""
+    if not title:
+        return 999
+    # Patterns: "S5 E3", "Season 5 Episode 3", "Season 5", "S5"
+    m = re.search(r'(?:^|\b)S(?:eason)?[.\s]*(\d+)(?:\s+E(?:p(?:isode)?)?[.\s]*\d+)?', title, re.IGNORECASE)
+    if m:
+        return int(m.group(1))
+    return 999
+
+
 def _parse_video_json(html: str) -> list[dict]:
     videos = []
     pattern = re.compile(
@@ -53,6 +64,7 @@ def _parse_video_json(html: str) -> list[dict]:
                     "duration": item.get("duration"),
                     "view_count": item.get("view_count"),
                     "upload_date": item.get("upload_date"),
+                    "season": _parse_season(title),
                 })
         except (json.JSONDecodeError, Exception):
             continue
@@ -105,6 +117,7 @@ async def _fetch_all_videos(max_results: int) -> list[dict]:
         if not pending:
             break
 
+    all_videos.sort(key=lambda v: v.get("season", 999))
     return all_videos[:max_results]
 
 
