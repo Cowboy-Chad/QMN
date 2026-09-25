@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Search, Loader2 } from 'lucide-react'
-import { getChannelVideos } from '../api/client'
+import { getChannelVideos } from '../api/rumble'
 
 export default function VideoPicker({ onSelect, onClear }) {
   const [videos, setVideos] = useState([])

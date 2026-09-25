@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { Video } from 'lucide-react'
 import PatternSelector from '../components/PatternSelector'
 import AnalysisRunner from '../components/AnalysisRunner'
-import VideoPicker from '../components/VideoPicker'
+import VideoPicker from '../rumble/VideoPicker'
 import usePersistedState from '../hooks/usePersistedState'
-import { startRumbleAnalysis, checkRumbleResult } from '../api/client'
+import { startRumbleAnalysis, checkRumbleResult } from '../api/rumble'
 import { useJob } from '../context/JobContext'
 
 export default function RumbleAnalysisPage() {

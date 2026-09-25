@@ -1,0 +1,21 @@
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000/api'
+
+async function request(path, options = {}) {
+  const resp = await fetch(`${API_BASE}${path}`, {
+    headers: { 'Content-Type': 'application/json' },
+    ...options,
+  })
+  if (!resp.ok) {
+    const text = await resp.text()
+    throw new Error(text || `Request failed: ${resp.status}`)
+  }
+  return resp.json()
+}
+
+export function getHistory(params = {}) {
+  const qs = new URLSearchParams()
+  for (const [k, v] of Object.entries(params)) {
+    if (v) qs.set(k, v)
+  }
+  return request(`/history?${qs.toString()}`)
+}

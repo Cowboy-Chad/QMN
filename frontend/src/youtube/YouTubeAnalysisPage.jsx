@@ -3,7 +3,7 @@ import { MonitorPlay } from 'lucide-react'
 import PatternSelector from '../components/PatternSelector'
 import AnalysisRunner from '../components/AnalysisRunner'
 import usePersistedState from '../hooks/usePersistedState'
-import { startYouTubeAnalysis, checkYouTubeResult } from '../api/client'
+import { startYouTubeAnalysis, checkYouTubeResult } from '../api/youtube'
 
 export default function YouTubeAnalysisPage() {
   const [url, setUrl] = usePersistedState('yt-url', '')

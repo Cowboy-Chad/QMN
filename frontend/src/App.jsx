@@ -1,9 +1,9 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import { JobProvider } from './context/JobContext'
-import YouTubeAnalysisPage from './pages/YouTubeAnalysisPage'
-import RumbleAnalysisPage from './pages/RumbleAnalysisPage'
-import HistoryPage from './pages/HistoryPage'
+import YouTubeAnalysisPage from './youtube/YouTubeAnalysisPage'
+import RumbleAnalysisPage from './rumble/RumbleAnalysisPage'
+import HistoryPage from './history/HistoryPage'
 
 function App() {
   return (

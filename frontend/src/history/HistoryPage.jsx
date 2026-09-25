@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { getHistory } from '../api/client'
+import { getHistory } from '../api/history'
 import { Clock, MonitorPlay, Video, Copy, ExternalLink, ChevronDown, ChevronUp, Search, X } from 'lucide-react'
 import MetadataDisplay from '../components/MetadataDisplay'
 import MarkdownResult from '../components/MarkdownResult'
@@ -38,8 +38,11 @@ export default function HistoryPage() {
     return () => document.removeEventListener('keydown', handler)
   }, [showMetaId])
 
+  // Normalize season/episode spacing so "S3E5" matches "S3 E5" and vice versa
+  const norm = (s) => s.replace(/s\s*(\d+)\s*e\s*(\d+)/gi, 's$1e$2')
+
   const filteredJobs = useMemo(() => {
-    const q = query.trim().toLowerCase()
+    const q = norm(query.trim().toLowerCase())
     if (!q) return jobs
     return jobs.filter((job) => {
       const m = job.metadata_json || {}
@@ -58,6 +61,7 @@ export default function HistoryPage() {
         m.webpage_url,
       ]
         .filter(Boolean)
+        .map(norm)
         .join('\n')
         .toLowerCase()
       return haystack.includes(q)
