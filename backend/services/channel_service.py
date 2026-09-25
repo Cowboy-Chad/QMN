@@ -27,19 +27,26 @@ def _get_scraper():
 
 
 def _parse_season_episode(title: str | None) -> tuple[int, int]:
-    """Extract (season, episode) from a video title. Returns (999, 999) for unknown."""
+    """Extract (season, episode) from a video title. Returns (999, 999) for unknown.
+    Finds the best match — prefers a match with both season AND episode over
+    a match with season alone."""
     if not title:
         return (999, 999)
     # Patterns: "S5 E3", "Season 5 Episode 3", "S12E5", "S5 E20"
-    m = re.search(
+    pattern = re.compile(
         r'(?:^|\b)S(?:eason)?[.\s]*(\d+)(?:[.\s]*E(?:p(?:isode)?)?[.\s]*(\d+))?',
-        title, re.IGNORECASE,
+        re.IGNORECASE,
     )
-    if m:
+    best = None
+    for m in pattern.finditer(title):
         season = int(m.group(1))
         episode = int(m.group(2)) if m.group(2) else 0
-        return (season, episode)
-    return (999, 999)
+        # Prefer matches that have both season AND episode
+        if episode > 0:
+            return (season, episode)  # found a complete match, use it
+        if best is None:
+            best = (season, episode)
+    return best if best else (999, 999)
 
 
 def _parse_video_json(html: str) -> list[dict]:
