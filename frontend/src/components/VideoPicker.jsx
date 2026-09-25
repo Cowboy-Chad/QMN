@@ -50,7 +50,7 @@ export default function VideoPicker({ onSelect }) {
       </div>
 
       {open && (
-        <div className="absolute z-20 mt-1 w-full bg-gray-800 border border-gray-700 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+        <div className="absolute z-20 mt-1 w-full bg-gray-800 border border-gray-700 rounded-lg shadow-xl max-h-80 overflow-y-auto">
           {loading && (
             <div className="flex items-center gap-2 px-3 py-3 text-xs text-gray-400">
               <Loader2 className="animate-spin" size={14} />
@@ -77,7 +77,7 @@ export default function VideoPicker({ onSelect }) {
                 }}
                 className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-700 transition border-b border-gray-700/50 last:border-0"
               >
-                <div className="truncate font-medium">{v.title || 'Untitled'}</div>
+                <div className="font-medium leading-snug">{v.title || 'Untitled'}</div>
                 <div className="text-xs text-gray-500 mt-0.5">
                   {v.duration ? `${Math.floor(v.duration / 60)}:${String(v.duration % 60).padStart(2, '0')}` : ''}
                   {v.view_count != null ? ` · ${v.view_count.toLocaleString()} views` : ''}
