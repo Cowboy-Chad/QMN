@@ -228,7 +228,7 @@ export default function HistoryPage() {
                     )}
                     {job.url && (
                       <a href={job.url} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded">
-                        <ExternalLink size={12} /> Open Original
+                        <ExternalLink size={12} /> Open This Video
                       </a>
                     )}
                   </div>
