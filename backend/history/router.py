@@ -1,7 +1,7 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
-from backend.schemas import JobStatusResponse, PatternInfo
-from backend.services.database_helpers import get_job, list_jobs, find_existing_result
+from backend.history.schemas import JobStatusResponse
+from backend.history.db_helpers import list_jobs, get_job
 from backend.services.fabric_service import list_patterns, DEFAULT_MODEL as FABRIC_DEFAULT_MODEL
 
 router = APIRouter(prefix="/api")
@@ -14,7 +14,6 @@ async def health():
 
 @router.get("/jobs/{job_id}", response_model=JobStatusResponse)
 async def get_job_status(job_id: str):
-    from fastapi import HTTPException
     job = await get_job(job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -26,7 +25,7 @@ async def get_history(source: str | None = None, pattern: str | None = None, lim
     return await list_jobs(source=source, pattern=pattern, limit=limit, offset=offset)
 
 
-@router.get("/patterns", response_model=list[PatternInfo])
+@router.get("/patterns")
 async def get_patterns():
     return await list_patterns()
 

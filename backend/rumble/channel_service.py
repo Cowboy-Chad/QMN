@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 import cloudscraper
 
-from backend.services.database_helpers import get_cache, set_cache
+from backend.rumble.db_helpers import get_cache, set_cache
 
 CHANNEL_URL = os.environ.get("RUMBLE_CHANNEL_URL", "https://rumble.com/c/MarinaJacobi")
 MAX_RESULTS = int(os.environ.get("CHANNEL_MAX_RESULTS", "500"))

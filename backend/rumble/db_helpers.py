@@ -2,7 +2,7 @@ from typing import Optional
 
 from backend.models import AnalysisJob, CacheEntry
 from backend.database import async_session
-from backend.schemas import JobStatusResponse
+from backend.rumble.schemas import JobStatusResponse
 from backend.services.fabric_service import DEFAULT_MODEL
 
 
@@ -24,40 +24,6 @@ async def get_job(job_id: str) -> Optional[JobStatusResponse]:
             created_at=job.created_at,
             updated_at=job.updated_at,
         )
-
-
-async def list_jobs(
-    source: Optional[str] = None,
-    pattern: Optional[str] = None,
-    limit: int = 50,
-    offset: int = 0,
-) -> list[JobStatusResponse]:
-    async with async_session() as session:
-        from sqlalchemy import select, desc
-        stmt = select(AnalysisJob)
-        if source:
-            stmt = stmt.where(AnalysisJob.source == source)
-        if pattern:
-            stmt = stmt.where(AnalysisJob.pattern == pattern)
-        stmt = stmt.order_by(desc(AnalysisJob.created_at)).offset(offset).limit(limit)
-        result = await session.execute(stmt)
-        jobs = result.scalars().all()
-        return [
-            JobStatusResponse(
-                id=j.id,
-                source=j.source,
-                url=j.url,
-                pattern=j.pattern,
-                status=j.status,
-                transcript=j.transcript,
-                result=j.result,
-                error=j.error,
-                metadata_json=j.metadata_json,
-                created_at=j.created_at,
-                updated_at=j.updated_at,
-            )
-            for j in jobs
-        ]
 
 
 async def _job_to_response(job: AnalysisJob) -> JobStatusResponse:
@@ -180,6 +146,7 @@ async def update_job_status(job_id: str, status: str, **extra_fields):
 
 
 async def get_cache(key: str) -> tuple[str | None, datetime | None]:
+    from datetime import datetime
     async with async_session() as session:
         entry = await session.get(CacheEntry, key)
         if entry:

@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException
 
-from backend.schemas import YouTubeRequest, JobStatusResponse
-from backend.services.database_helpers import get_job, find_existing_result
-from backend.services.youtube_orchestrator import run_youtube_analysis
+from backend.youtube.schemas import YouTubeRequest, JobStatusResponse
+from backend.youtube.db_helpers import get_job, find_existing_result
+from backend.youtube.orchestrator import run_youtube_analysis
 
 router = APIRouter(prefix="/api/youtube")
 

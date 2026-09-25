@@ -3,16 +3,6 @@ from typing import Optional
 from datetime import datetime
 
 
-class YouTubeRequest(BaseModel):
-    url: str = ""
-    pattern: str
-
-
-class RumbleRequest(BaseModel):
-    url: str = ""
-    pattern: str
-
-
 class JobStatusResponse(BaseModel):
     id: str
     source: str
@@ -28,7 +18,6 @@ class JobStatusResponse(BaseModel):
 
     @field_serializer("created_at", "updated_at")
     def serialize_dt(self, dt: datetime) -> str:
-        # SQLite loses tzinfo, so naive datetimes are actually UTC
         if dt.tzinfo is None:
             return dt.isoformat() + "+00:00"
         return dt.isoformat()
@@ -39,8 +28,3 @@ class HistoryFilter(BaseModel):
     pattern: Optional[str] = None
     limit: int = Field(default=50, ge=1, le=200)
     offset: int = Field(default=0, ge=0)
-
-
-class PatternInfo(BaseModel):
-    name: str
-    description: str = ""

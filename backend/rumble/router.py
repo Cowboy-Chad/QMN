@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException
 
-from backend.schemas import RumbleRequest, JobStatusResponse
-from backend.services.database_helpers import get_job, find_existing_result
-from backend.services.rumble_orchestrator import run_rumble_analysis
+from backend.rumble.schemas import RumbleRequest, JobStatusResponse
+from backend.rumble.db_helpers import get_job, find_existing_result
+from backend.rumble.orchestrator import run_rumble_analysis
 
 router = APIRouter(prefix="/api/rumble")
 
