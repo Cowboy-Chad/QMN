@@ -131,11 +131,9 @@ export default function HistoryPage() {
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium truncate text-gray-400">URL:</span>
                     <span className="text-sm font-medium truncate">{job.url || job.file_path || '—'}</span>
-                    <span className={`text-xs px-1.5 py-0.5 rounded ${
-                      job.status === 'completed' ? 'bg-green-900/50 text-green-300' :
-                      job.status === 'failed' ? 'bg-red-900/50 text-red-300' :
-                      'bg-yellow-900/50 text-yellow-300'
-                    }`}>{job.status}</span>
+                    {job.status === 'failed' && (
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-red-900/50 text-red-300">Failed</span>
+                    )}
                   </div>
                   <div className="text-xs text-gray-500 mt-0.5">
                     Source: {job.source === 'rumble' ? "Marina Jacobi's Rumble Channel" : (job.source || '—')} · Pattern used was: {job.pattern} · {(function() {
@@ -191,7 +189,10 @@ export default function HistoryPage() {
                     </div>
                   )}
                   {job.error && (
-                    <div className="text-red-400 text-xs">{job.error}</div>
+                    <div>
+                      <div className="text-xs font-medium text-red-400 mb-1">Failed</div>
+                      <div className="bg-red-900/20 border border-red-800/50 rounded p-3 text-xs text-red-300">{job.error}</div>
+                    </div>
                   )}
                   <div className="flex gap-2">
                     {job.result && (
