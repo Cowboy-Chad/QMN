@@ -9,7 +9,7 @@ router = APIRouter(prefix="/api/youtube")
 
 @router.post("/analyze")
 async def analyze_youtube(body: YouTubeRequest):
-    job_id = await run_youtube_analysis(url=body.url, pattern=body.pattern, model=body.model)
+    job_id = await run_youtube_analysis(url=body.url, pattern=body.pattern)
     return {"job_id": job_id, "status": "pending"}
 
 
@@ -22,8 +22,8 @@ async def get_youtube_job(job_id: str):
 
 
 @router.get("/check-result")
-async def check_youtube_result(url: str, pattern: str, model: str | None = None):
-    job = await find_existing_result("youtube", url, pattern, model)
+async def check_youtube_result(url: str, pattern: str):
+    job = await find_existing_result("youtube", url, pattern, None)
     if job is None:
         return {"found": False}
     return {"found": True, "job": job}
