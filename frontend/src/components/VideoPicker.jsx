@@ -31,7 +31,13 @@ export default function VideoPicker({ onSelect }) {
   }, [])
 
   const filtered = query.trim()
-    ? videos.filter((v) => v.title?.toLowerCase().includes(query.trim().toLowerCase()))
+    ? videos.filter((v) => {
+        const q = query.trim().toLowerCase()
+        const title = (v.title || '').toLowerCase()
+        // Normalize season/episode spacing so "S8 E11" matches "S8E11"
+        const norm = (s) => s.replace(/s\s*(\d+)\s*e\s*(\d+)/g, 's$1e$2')
+        return norm(title).includes(norm(q))
+      })
     : videos
 
   return (
