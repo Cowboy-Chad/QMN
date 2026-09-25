@@ -49,7 +49,7 @@ export default function RumbleAnalysisPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Rumble Analysis</h1>
+      <h1 className="text-2xl font-bold mb-6">Freely Analyze</h1>
 
       <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-6 space-y-4">
         <div>
