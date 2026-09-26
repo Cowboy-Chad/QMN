@@ -8,6 +8,50 @@ FABRIC_TIMEOUT = int(os.environ.get("FABRIC_TIMEOUT", "600"))
 MAX_RETRIES = int(os.environ.get("FABRIC_MAX_RETRIES", "3"))
 RETRY_BASE_DELAY = float(os.environ.get("FABRIC_RETRY_BASE_DELAY", "2.0"))
 
+# Curated list of patterns available for selection
+CURATED_PATTERNS = sorted([
+    "analyze_claims",
+    "analyze_debate",
+    "analyze_incident",
+    "analyze_mistakes",
+    "analyze_personality",
+    "analyze_presentation",
+    "analyze_risk",
+    "analyze_spiritual_text",
+    "analyze_tech_impact",
+    "analyze_threat_report",
+    "analyze_threat_report_trends",
+    "ask_uncle_duke",
+    "audit_transparency",
+    "capture_thinkers_work",
+    "check_falsifiability",
+    "compare_and_contrast",
+    "create_5_sentence_summary",
+    "create_academic_paper",
+    "create_bd_issue",
+    "create_conceptmap",
+    "create_cyber_summary",
+    "create_flash_cards",
+    "create_golden_rules",
+    "create_idea_compass",
+    "create_investigation_visualization",
+    "create_micro_summary",
+    "create_newsletter_entry",
+    "create_prd",
+    "create_quiz",
+    "create_reading_plan",
+    "create_recursive_outline",
+    "create_story_about_person",
+    "create_summary",
+    "create_visualization",
+    "detect_mind_virus",
+    "dialog_with_socrates",
+    "explain_terms",
+    "extract_all_quotes",
+    "extract_alpha",
+    "extract_bd_ideas",
+])
+
 
 async def run_fabric(pattern: str, input_text: str, model: str | None = None, vendor: str | None = None) -> str:
     last_error = None
@@ -44,17 +88,7 @@ async def run_fabric(pattern: str, input_text: str, model: str | None = None, ve
 
 
 async def list_patterns() -> list[dict]:
-    proc = await asyncio.create_subprocess_exec(
-        "fabric",
-        "--listpatterns",
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    stdout, stderr = await proc.communicate()
-    if proc.returncode != 0:
-        raise RuntimeError(f"fabric --listpatterns failed: {stderr.decode()}")
-    names = [line.strip() for line in stdout.decode().splitlines() if line.strip()]
-    return [{"name": n, "description": ""} for n in names]
+    return [{"name": n, "description": ""} for n in CURATED_PATTERNS]
 
 
 async def read_pattern(pattern: str) -> str:
