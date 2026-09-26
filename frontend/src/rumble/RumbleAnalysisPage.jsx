@@ -100,6 +100,8 @@ export default function RumbleAnalysisPage() {
       <h1 className="text-2xl font-bold mb-6">Freely Analyze</h1>
 
       <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-6 space-y-4">
+        <VideoPicker queryTitle={pickerQuery} onSelect={(videoUrl) => { setUrl(videoUrl); setTitleResolved(false); setPickerQuery(''); focusAnalyze() }} onClear={() => { setUrl(''); setTitleResolved(false); setPickerQuery('') }} />
+
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-1">Rumble URL</label>
           <input
@@ -122,8 +124,6 @@ export default function RumbleAnalysisPage() {
             Only videos from channel <strong>MarinaJacobi</strong> are supported.
           </p>
         </div>
-
-        <VideoPicker queryTitle={pickerQuery} onSelect={(videoUrl) => { setUrl(videoUrl); setTitleResolved(false); setPickerQuery(''); focusAnalyze() }} onClear={() => { setUrl(''); setTitleResolved(false); setPickerQuery('') }} />
 
         <PatternSelector
           value={pattern}
