@@ -78,7 +78,7 @@ export default function YouTubeAnalysisPage() {
 
         {checkMessage === 'not_found' && (
           <div className="inline-block px-3 py-1.5 bg-red-900/50 border border-red-700 rounded text-xs text-red-300">
-            No prior analysis found for this video.
+            No prior analysis found — just click the button or press the Enter key.
           </div>
         )}
 
