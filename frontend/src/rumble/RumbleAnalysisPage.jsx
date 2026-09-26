@@ -28,6 +28,9 @@ export default function RumbleAnalysisPage() {
   }, [])
 
   const focusAnalyze = () => {
+    setJobId('')
+    setError('')
+    setCheckMessage('')
     setTimeout(() => analyzeRef.current?.focus(), 100)
   }
 
