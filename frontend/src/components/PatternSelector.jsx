@@ -100,8 +100,6 @@ export default function PatternSelector({ value, onChange, storageKey = 'shared'
                 setConfirmed(name)
                 if (onConfirm) onConfirm(name)
               }
-            } else {
-              setHighlightedIndex(-1)
             }
           }}
           className={`w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 mb-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 ${
@@ -121,6 +119,7 @@ export default function PatternSelector({ value, onChange, storageKey = 'shared'
             <div
               key={p.name}
               onClick={() => handleClick(p.name)}
+              onMouseEnter={() => setHighlightedIndex(idx)}
               className={`px-3 py-1.5 text-sm cursor-pointer transition ${
                 p.name === value
                   ? 'bg-violet-600/30 text-violet-200'
