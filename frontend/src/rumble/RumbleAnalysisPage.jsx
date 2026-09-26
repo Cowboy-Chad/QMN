@@ -25,6 +25,9 @@ export default function RumbleAnalysisPage() {
     getChannelVideos(500).then((data) => {
       if (data.videos) setVideos(data.videos)
     }).catch(() => {})
+    // Clear persisted pattern state so it starts fresh on each visit
+    sessionStorage.removeItem('pattern-search-rumble')
+    sessionStorage.removeItem('pattern-confirmed-rumble')
   }, [])
 
   const focusAnalyze = () => {
