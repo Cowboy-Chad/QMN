@@ -12,6 +12,10 @@ export default function PatternSelector({ value, onChange, storageKey = 'shared'
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
   const dropdownRef = useRef(null)
 
+  const confirmedNumber = confirmed
+    ? patterns.findIndex(p => p.name === confirmed) + 1
+    : null
+
   useEffect(() => {
     setLoading(true)
     getPatterns().then((data) => {
@@ -55,56 +59,65 @@ export default function PatternSelector({ value, onChange, storageKey = 'shared'
       <label className="block text-sm font-medium text-gray-300 mb-1">
         Analysis Pattern
       </label>
-      <input
-        type="text"
-        placeholder="Search patterns..."
-        value={search}
-        onChange={(e) => {
-          setSearch(e.target.value)
-          setConfirmed('')
-        }}
-        onDoubleClick={() => {
-          setSearch('')
-          setConfirmed('')
-          if (onClear) onClear()
-        }}
-        onKeyDown={(e) => {
-          if (e.key === 'ArrowDown') {
-            e.preventDefault()
-            setHighlightedIndex((prev) =>
-              prev < filtered.length - 1 ? prev + 1 : 0
-            )
-          } else if (e.key === 'ArrowUp') {
-            e.preventDefault()
-            setHighlightedIndex((prev) =>
-              prev > 0 ? prev - 1 : filtered.length - 1
-            )
-          } else if (e.key === 'Enter') {
-            if (confirmed) {
-              if (onEnter) onEnter()
-            } else if (filtered.length > 0) {
-              const idx = highlightedIndex >= 0 ? highlightedIndex : 0
-              const name = filtered[idx].name
-              onChange(name)
-              setSearch(name)
-              setConfirmed(name)
-              if (onConfirm) onConfirm(name)
+      <div className="relative">
+        {confirmedNumber && (
+          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-green-500 text-sm pointer-events-none z-10">
+            {confirmedNumber}:
+          </span>
+        )}
+        <input
+          type="text"
+          placeholder="Search patterns..."
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value)
+            setConfirmed('')
+          }}
+          onDoubleClick={() => {
+            setSearch('')
+            setConfirmed('')
+            if (onClear) onClear()
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowDown') {
+              e.preventDefault()
+              setHighlightedIndex((prev) =>
+                prev < filtered.length - 1 ? prev + 1 : 0
+              )
+            } else if (e.key === 'ArrowUp') {
+              e.preventDefault()
+              setHighlightedIndex((prev) =>
+                prev > 0 ? prev - 1 : filtered.length - 1
+              )
+            } else if (e.key === 'Enter') {
+              if (confirmed) {
+                if (onEnter) onEnter()
+              } else if (filtered.length > 0) {
+                const idx = highlightedIndex >= 0 ? highlightedIndex : 0
+                const name = filtered[idx].name
+                onChange(name)
+                setSearch(name)
+                setConfirmed(name)
+                if (onConfirm) onConfirm(name)
+              }
+            } else {
+              setHighlightedIndex(-1)
             }
-          } else {
-            setHighlightedIndex(-1)
-          }
-        }}
-        className={`w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 mb-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 ${
-          confirmed ? 'text-green-400' : 'text-gray-300'
-        }`}
-      />
+          }}
+          className={`w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 mb-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 ${
+            confirmed ? 'text-green-400 pl-8' : 'text-gray-300'
+          }`}
+        />
+      </div>
       {showDropdown && (
         <div ref={dropdownRef} className="w-full bg-gray-800 border border-gray-700 rounded-lg overflow-y-auto min-h-[120px] max-h-[200px]">
           {loading ? (
             <div className="px-3 py-1.5 text-sm text-gray-500">Loading patterns...</div>
           ) : filtered.length === 0 ? (
             <div className="px-3 py-1.5 text-sm text-gray-500">No patterns match your search</div>
-          ) : filtered.map((p, idx) => (
+          ) : filtered.map((p, idx) => {
+            const globalIdx = patterns.indexOf(p);
+            return (
             <div
               key={p.name}
               onClick={() => handleClick(p.name)}
@@ -116,9 +129,10 @@ export default function PatternSelector({ value, onChange, storageKey = 'shared'
                     : 'text-gray-100 hover:bg-gray-700'
               }`}
             >
-              {p.name}
+              <span className="text-gray-500 mr-1">{globalIdx + 1}:</span>{p.name}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
