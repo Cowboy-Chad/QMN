@@ -42,7 +42,7 @@ export default function RumbleAnalysisPage() {
     const match = videos.find((v) => {
       const title = (v.title || '').toLowerCase()
       const videoUrl = (v.url || '').toLowerCase()
-      return videoUrl.includes(q) || norm(title).includes(norm(q)) || title === q
+      return q.includes(videoUrl) || norm(title).includes(norm(q)) || title === q
     })
 
     if (match) {
