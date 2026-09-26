@@ -13,6 +13,7 @@ export default function VideoPicker({ onSelect, onClear }) {
   const inputRef = useRef(null)
   const listRef = useRef(null)
   const lastClick = useRef(0)
+  const pastingRef = useRef(false)
 
   const handleInputClick = () => {
     const now = Date.now()
@@ -23,6 +24,33 @@ export default function VideoPicker({ onSelect, onClear }) {
       lastClick.current = 0
     } else {
       lastClick.current = now
+    }
+  }
+
+  const selectVideo = (v) => {
+    onSelect(v.url, v.title)
+    setQuery(v.title || '')
+    setOpen(false)
+    inputRef.current?.blur()
+  }
+
+  const handlePaste = (e) => {
+    const pasted = (e.clipboardData?.getData('text') || '').trim()
+    if (!pasted || /^(https?:\/\/)?(www\.)?(rumble\.com|youtube\.com|youtu\.be)/i.test(pasted)) {
+      return // let normal paste behavior handle URLs
+    }
+
+    const q = pasted.toLowerCase()
+    const norm = (s) => s.replace(/s\s*(\d+)\s*e\s*(\d+)/gi, 's$1e$2')
+    const match = videos.find((v) => {
+      const title = (v.title || '').toLowerCase()
+      return norm(title).includes(norm(q)) || title === q
+    })
+
+    if (match) {
+      e.preventDefault()
+      pastingRef.current = true
+      selectVideo(match)
     }
   }
 
@@ -65,10 +93,14 @@ export default function VideoPicker({ onSelect, onClear }) {
           ref={inputRef}
           type="text"
           value={query}
-          onChange={(e) => { setQuery(e.target.value); setOpen(true); setHighlightedIndex(-1) }}
+          onChange={(e) => {
+            if (pastingRef.current) { pastingRef.current = false; return }
+            setQuery(e.target.value); setOpen(true); setHighlightedIndex(-1)
+          }}
           onFocus={() => setOpen(true)}
           onBlur={() => setOpen(false)}
           onClick={handleInputClick}
+          onPaste={handlePaste}
           onKeyDown={(e) => {
             if (e.key === 'ArrowDown') {
               e.preventDefault()
@@ -82,11 +114,7 @@ export default function VideoPicker({ onSelect, onClear }) {
               )
             } else if (e.key === 'Enter' && highlightedIndex >= 0 && filtered[highlightedIndex]) {
               e.preventDefault()
-              const v = filtered[highlightedIndex]
-              onSelect(v.url, v.title)
-              setQuery(v.title || '')
-              setOpen(false)
-              inputRef.current?.blur()
+              selectVideo(filtered[highlightedIndex])
             }
           }}
           placeholder={loading ? `Loading all channel videos...` : `Search ${count} videos by title...`}
@@ -116,12 +144,7 @@ export default function VideoPicker({ onSelect, onClear }) {
               <button
                 key={v.url || i}
                 onMouseDown={(e) => e.preventDefault()}
-                onClick={() => {
-                  onSelect(v.url, v.title)
-                  setQuery(v.title || '')
-                  setOpen(false)
-                  inputRef.current?.blur()
-                }}
+                onClick={() => selectVideo(v)}
                 onMouseEnter={() => setHighlightedIndex(i)}
                 className={`w-full text-left px-3 py-2 text-sm transition border-b border-gray-700/50 last:border-0 ${
                   i === highlightedIndex
