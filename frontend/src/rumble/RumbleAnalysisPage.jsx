@@ -130,6 +130,7 @@ export default function RumbleAnalysisPage() {
           onChange={setPattern}
           onEnter={() => { handleAnalyze(); focusAnalyze() }}
           onConfirm={(name) => { handleAutoCheck(); focusAnalyze() }}
+          onClear={() => setPattern('create_micro_summary')}
           storageKey="rumble"
         />
 

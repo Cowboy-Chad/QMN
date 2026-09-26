@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { getPatterns } from '../api/client'
 import usePersistedState from '../hooks/usePersistedState'
 
-export default function PatternSelector({ value, onChange, storageKey = 'shared', onEnter, onConfirm }) {
+export default function PatternSelector({ value, onChange, storageKey = 'shared', onEnter, onConfirm, onClear }) {
   const [patterns, setPatterns] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = usePersistedState(`pattern-search-${storageKey}`, '')
@@ -62,6 +62,11 @@ export default function PatternSelector({ value, onChange, storageKey = 'shared'
         onChange={(e) => {
           setSearch(e.target.value)
           setConfirmed('')
+        }}
+        onDoubleClick={() => {
+          setSearch('')
+          setConfirmed('')
+          if (onClear) onClear()
         }}
         onKeyDown={(e) => {
           if (e.key === 'ArrowDown') {
