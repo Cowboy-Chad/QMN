@@ -3,14 +3,13 @@ import { Video } from 'lucide-react'
 import PatternSelector from '../components/PatternSelector'
 import AnalysisRunner from '../components/AnalysisRunner'
 import VideoPicker from '../rumble/VideoPicker'
-import usePersistedState from '../hooks/usePersistedState'
 import { startRumbleAnalysis, checkRumbleResult, getChannelVideos } from '../api/rumble'
 import { useJob } from '../context/JobContext'
 
 export default function RumbleAnalysisPage() {
   const { isJobRunning } = useJob()
-  const [url, setUrl] = usePersistedState('rumble-url', '')
-  const [pattern, setPattern] = usePersistedState('rumble-pattern', 'create_micro_summary')
+  const [url, setUrl] = useState('')
+  const [pattern, setPattern] = useState('create_micro_summary')
   const [jobId, setJobId] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
