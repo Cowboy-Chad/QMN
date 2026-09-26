@@ -18,8 +18,7 @@ export default function RumbleAnalysisPage() {
   const analyzeRef = useRef(null)
 
   const focusAnalyze = () => {
-    // Small delay so the button re-renders before focusing
-    setTimeout(() => analyzeRef.current?.focus(), 0)
+    requestAnimationFrame(() => analyzeRef.current?.focus())
   }
 
   const handleAnalyze = async () => {
