@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Video } from 'lucide-react'
 import PatternSelector from '../components/PatternSelector'
 import AnalysisRunner from '../components/AnalysisRunner'
@@ -15,6 +15,12 @@ export default function RumbleAnalysisPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [checkMessage, setCheckMessage] = useState('')
+  const analyzeRef = useRef(null)
+
+  const focusAnalyze = () => {
+    // Small delay so the button re-renders before focusing
+    setTimeout(() => analyzeRef.current?.focus(), 0)
+  }
 
   const handleAnalyze = async () => {
     setSubmitting(true)
@@ -67,17 +73,18 @@ export default function RumbleAnalysisPage() {
           </p>
         </div>
 
-        <VideoPicker onSelect={(videoUrl) => setUrl(videoUrl)} onClear={() => setUrl('')} />
+        <VideoPicker onSelect={(videoUrl) => { setUrl(videoUrl); focusAnalyze() }} onClear={() => setUrl('')} />
 
         <PatternSelector
           value={pattern}
           onChange={setPattern}
-          onEnter={handleAnalyze}
-          onConfirm={handleAutoCheck}
+          onEnter={() => { handleAnalyze(); focusAnalyze() }}
+          onConfirm={(name) => { handleAutoCheck(); focusAnalyze() }}
           storageKey="rumble"
         />
 
         <button
+          ref={analyzeRef}
           onClick={handleAnalyze}
           disabled={!url || !pattern || isJobRunning}
           className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-500 disabled:bg-gray-700 disabled:text-gray-500 rounded-lg font-medium transition"
