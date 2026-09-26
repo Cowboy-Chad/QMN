@@ -65,6 +65,7 @@ export default function RumbleAnalysisPage() {
             placeholder="https://rumble.com/v..."
             value={url}
             onChange={(e) => { setUrl(e.target.value); if (e.target.value.trim()) focusAnalyze() }}
+            onPaste={focusAnalyze}
             onDoubleClick={() => setUrl('')}
             className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
           />
