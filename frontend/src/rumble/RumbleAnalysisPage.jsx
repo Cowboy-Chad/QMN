@@ -28,7 +28,7 @@ export default function RumbleAnalysisPage() {
   }, [])
 
   const focusAnalyze = () => {
-    requestAnimationFrame(() => analyzeRef.current?.focus())
+    setTimeout(() => analyzeRef.current?.focus(), 100)
   }
 
   const handlePaste = (e) => {

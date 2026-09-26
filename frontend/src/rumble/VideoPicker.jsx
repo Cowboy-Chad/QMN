@@ -10,6 +10,7 @@ export default function VideoPicker({ onSelect, onClear }) {
   const [error, setError] = useState('')
   const [open, setOpen] = useState(false)
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
+  const [resolved, setResolved] = useState(false)
   const inputRef = useRef(null)
   const listRef = useRef(null)
   const lastClick = useRef(0)
@@ -18,8 +19,8 @@ export default function VideoPicker({ onSelect, onClear }) {
   const handleInputClick = () => {
     const now = Date.now()
     if (now - lastClick.current < 400) {
-      // Double-click / double-tap detected
       setQuery('')
+      setResolved(false)
       onClear?.()
       lastClick.current = 0
     } else {
@@ -30,6 +31,7 @@ export default function VideoPicker({ onSelect, onClear }) {
   const selectVideo = (v) => {
     onSelect(v.url, v.title)
     setQuery(v.title || '')
+    setResolved(true)
     setOpen(false)
     inputRef.current?.blur()
   }
@@ -37,7 +39,7 @@ export default function VideoPicker({ onSelect, onClear }) {
   const handlePaste = (e) => {
     const pasted = (e.clipboardData?.getData('text') || '').trim()
     if (!pasted || /^(https?:\/\/)?(www\.)?(rumble\.com|youtube\.com|youtu\.be)/i.test(pasted)) {
-      return // let normal paste behavior handle URLs
+      return
     }
 
     const q = pasted.toLowerCase()
@@ -95,7 +97,7 @@ export default function VideoPicker({ onSelect, onClear }) {
           value={query}
           onChange={(e) => {
             if (pastingRef.current) { pastingRef.current = false; return }
-            setQuery(e.target.value); setOpen(true); setHighlightedIndex(-1)
+            setQuery(e.target.value); setResolved(false); setOpen(true); setHighlightedIndex(-1)
           }}
           onFocus={() => setOpen(true)}
           onBlur={() => setOpen(false)}
@@ -118,7 +120,11 @@ export default function VideoPicker({ onSelect, onClear }) {
             }
           }}
           placeholder={loading ? `Loading all channel videos...` : `Search ${count} videos by title...`}
-          className="w-full pl-9 pr-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-violet-500 transition"
+          className={`w-full pl-9 pr-3 py-2 border rounded-lg text-sm placeholder-gray-500 focus:outline-none focus:ring-2 transition ${
+            resolved
+              ? 'bg-gray-800 border-green-600 text-green-300 focus:ring-green-500'
+              : 'bg-gray-800 border-gray-700 text-gray-200 focus:border-violet-500'
+          }`}
         />
       </div>
 
