@@ -1,10 +1,10 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Video } from 'lucide-react'
 import PatternSelector from '../components/PatternSelector'
 import AnalysisRunner from '../components/AnalysisRunner'
 import VideoPicker from '../rumble/VideoPicker'
 import usePersistedState from '../hooks/usePersistedState'
-import { startRumbleAnalysis, checkRumbleResult } from '../api/rumble'
+import { startRumbleAnalysis, checkRumbleResult, getChannelVideos } from '../api/rumble'
 import { useJob } from '../context/JobContext'
 
 export default function RumbleAnalysisPage() {
@@ -15,10 +15,51 @@ export default function RumbleAnalysisPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [checkMessage, setCheckMessage] = useState('')
+  const [videos, setVideos] = useState([])
+  const [titleResolved, setTitleResolved] = useState(false)
   const analyzeRef = useRef(null)
+  const pasteHandledRef = useRef(false)
+
+  // Fetch channel videos for title-to-URL resolution
+  useEffect(() => {
+    getChannelVideos(500).then((data) => {
+      if (data.videos) setVideos(data.videos)
+    }).catch(() => {})
+  }, [])
 
   const focusAnalyze = () => {
     requestAnimationFrame(() => analyzeRef.current?.focus())
+  }
+
+  const handlePaste = (e) => {
+    const pasted = (e.clipboardData?.getData('text') || '').trim()
+    if (!pasted) return
+
+    // If it already looks like a URL, just store and focus
+    if (/^(https?:\/\/)?(www\.)?(rumble\.com|youtube\.com|youtu\.be)/i.test(pasted)) {
+      setUrl(pasted)
+      setTitleResolved(false)
+      focusAnalyze()
+      return
+    }
+
+    // Treat as a title — search channel videos for a match
+    const q = pasted.toLowerCase()
+    const match = videos.find((v) => {
+      const title = (v.title || '').toLowerCase()
+      // Normalize season/episode spacing for matching
+      const norm = (s) => s.replace(/s\s*(\d+)\s*e\s*(\d+)/gi, 's$1e$2')
+      return norm(title).includes(norm(q)) || title === q
+    })
+
+    if (match) {
+      setUrl(match.url)
+      setTitleResolved(true)
+    } else {
+      setUrl(pasted)
+      setTitleResolved(false)
+    }
+    focusAnalyze()
   }
 
   const handleAnalyze = async () => {
@@ -61,19 +102,23 @@ export default function RumbleAnalysisPage() {
           <label className="block text-sm font-medium text-gray-300 mb-1">Rumble URL</label>
           <input
             type="text"
-            placeholder="https://rumble.com/v..."
+            placeholder={videos.length > 0 ? "Paste a video title or URL..." : "https://rumble.com/v..."}
             value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            onPaste={focusAnalyze}
-            onDoubleClick={() => setUrl('')}
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
+            onChange={(e) => { setUrl(e.target.value); setTitleResolved(false) }}
+            onPaste={handlePaste}
+            onDoubleClick={() => { setUrl(''); setTitleResolved(false) }}
+            className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 transition ${
+              titleResolved
+                ? 'bg-gray-800 border-green-600 text-green-300 focus:ring-green-500'
+                : 'bg-gray-800 border-gray-700 text-gray-100 focus:ring-violet-500'
+            }`}
           />
           <p className="mt-1 text-xs text-gray-500">
             Only videos from channel <strong>MarinaJacobi</strong> are supported.
           </p>
         </div>
 
-        <VideoPicker onSelect={(videoUrl) => { setUrl(videoUrl); focusAnalyze() }} onClear={() => setUrl('')} />
+        <VideoPicker onSelect={(videoUrl) => { setUrl(videoUrl); setTitleResolved(false); focusAnalyze() }} onClear={() => { setUrl(''); setTitleResolved(false) }} />
 
         <PatternSelector
           value={pattern}
