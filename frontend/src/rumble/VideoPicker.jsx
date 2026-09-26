@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Search, Loader2 } from 'lucide-react'
 import { getChannelVideos } from '../api/rumble'
 
-export default function VideoPicker({ onSelect, onClear }) {
+export default function VideoPicker({ onSelect, onClear, queryTitle }) {
   const [videos, setVideos] = useState([])
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
@@ -15,6 +15,14 @@ export default function VideoPicker({ onSelect, onClear }) {
   const listRef = useRef(null)
   const lastClick = useRef(0)
   const pastingRef = useRef(false)
+
+  // When the parent resolves a title externally, sync it into the query
+  useEffect(() => {
+    if (queryTitle && queryTitle !== query) {
+      setQuery(queryTitle)
+      setResolved(true)
+    }
+  }, [queryTitle])
 
   const handleInputClick = () => {
     const now = Date.now()

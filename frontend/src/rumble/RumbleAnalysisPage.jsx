@@ -17,6 +17,7 @@ export default function RumbleAnalysisPage() {
   const [checkMessage, setCheckMessage] = useState('')
   const [videos, setVideos] = useState([])
   const [titleResolved, setTitleResolved] = useState(false)
+  const [pickerQuery, setPickerQuery] = useState('')
   const analyzeRef = useRef(null)
   const pasteHandledRef = useRef(false)
 
@@ -35,29 +36,23 @@ export default function RumbleAnalysisPage() {
     const pasted = (e.clipboardData?.getData('text') || '').trim()
     if (!pasted) return
 
-    // If it already looks like a URL, just store and focus
-    if (/^(https?:\/\/)?(www\.)?(rumble\.com|youtube\.com|youtu\.be)/i.test(pasted)) {
-      setUrl(pasted)
-      setTitleResolved(false)
-      focusAnalyze()
-      return
-    }
-
-    // Treat as a title — search channel videos for a match
+    // Search videos by URL or title
     const q = pasted.toLowerCase()
+    const norm = (s) => s.replace(/s\s*(\d+)\s*e\s*(\d+)/gi, 's$1e$2')
     const match = videos.find((v) => {
       const title = (v.title || '').toLowerCase()
-      // Normalize season/episode spacing for matching
-      const norm = (s) => s.replace(/s\s*(\d+)\s*e\s*(\d+)/gi, 's$1e$2')
-      return norm(title).includes(norm(q)) || title === q
+      const videoUrl = (v.url || '').toLowerCase()
+      return videoUrl.includes(q) || norm(title).includes(norm(q)) || title === q
     })
 
     if (match) {
       setUrl(match.url)
       setTitleResolved(true)
+      setPickerQuery(match.title || '')
     } else {
       setUrl(pasted)
       setTitleResolved(false)
+      setPickerQuery('')
     }
     focusAnalyze()
   }
@@ -104,9 +99,9 @@ export default function RumbleAnalysisPage() {
             type="text"
             placeholder={videos.length > 0 ? "Paste a video title or URL..." : "https://rumble.com/v..."}
             value={url}
-            onChange={(e) => { setUrl(e.target.value); setTitleResolved(false) }}
+            onChange={(e) => { setUrl(e.target.value); setTitleResolved(false); setPickerQuery('') }}
             onPaste={handlePaste}
-            onDoubleClick={() => { setUrl(''); setTitleResolved(false) }}
+            onDoubleClick={() => { setUrl(''); setTitleResolved(false); setPickerQuery('') }}
             className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 transition ${
               titleResolved
                 ? 'bg-gray-800 border-green-600 text-green-300 focus:ring-green-500'
@@ -118,7 +113,7 @@ export default function RumbleAnalysisPage() {
           </p>
         </div>
 
-        <VideoPicker onSelect={(videoUrl) => { setUrl(videoUrl); setTitleResolved(false); focusAnalyze() }} onClear={() => { setUrl(''); setTitleResolved(false) }} />
+        <VideoPicker queryTitle={pickerQuery} onSelect={(videoUrl) => { setUrl(videoUrl); setTitleResolved(false); setPickerQuery(''); focusAnalyze() }} onClear={() => { setUrl(''); setTitleResolved(false); setPickerQuery('') }} />
 
         <PatternSelector
           value={pattern}
