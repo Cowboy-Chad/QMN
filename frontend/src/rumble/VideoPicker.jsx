@@ -171,7 +171,7 @@ export default function VideoPicker({ onSelect, onClear, queryTitle }) {
                   }
                 }}
               >
-                <div className="font-medium leading-snug">{v.title || 'Untitled'}</div>
+                <div className="font-medium leading-snug"><span className="text-gray-500">Video {videos.indexOf(v) + 1}:</span> {v.title || 'Untitled'}</div>
                 <div className="text-xs text-gray-500 mt-0.5">
                   {v.duration ? `${Math.floor(v.duration / 60)}:${String(v.duration % 60).padStart(2, '0')}` : ''}
                   {v.view_count != null ? ` · ${v.view_count.toLocaleString()} views` : ''}
