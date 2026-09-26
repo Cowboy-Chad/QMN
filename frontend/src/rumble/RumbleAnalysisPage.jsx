@@ -18,7 +18,7 @@ export default function RumbleAnalysisPage() {
   const [titleResolved, setTitleResolved] = useState(false)
   const [pickerQuery, setPickerQuery] = useState('')
   const analyzeRef = useRef(null)
-  const pasteHandledRef = useRef(false)
+  const pastingRef = useRef(false)
 
   // Fetch channel videos for title-to-URL resolution
   useEffect(() => {
@@ -45,6 +45,8 @@ export default function RumbleAnalysisPage() {
     })
 
     if (match) {
+      e.preventDefault()
+      pastingRef.current = true
       setUrl(match.url)
       setTitleResolved(true)
       setPickerQuery(match.title || '')
@@ -98,7 +100,10 @@ export default function RumbleAnalysisPage() {
             type="text"
             placeholder={videos.length > 0 ? "Paste a video title or URL..." : "https://rumble.com/v..."}
             value={url}
-            onChange={(e) => { setUrl(e.target.value); setTitleResolved(false); setPickerQuery('') }}
+            onChange={(e) => {
+              if (pastingRef.current) { pastingRef.current = false; return }
+              setUrl(e.target.value); setTitleResolved(false); setPickerQuery('')
+            }}
             onPaste={handlePaste}
             onDoubleClick={() => { setUrl(''); setTitleResolved(false); setPickerQuery('') }}
             className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 transition ${
