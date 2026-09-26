@@ -114,7 +114,7 @@ export default function RumbleAnalysisPage() {
             }}
             onPaste={handlePaste}
             onDoubleClick={() => { setUrl(''); setTitleResolved(false); setPickerQuery('') }}
-            className={`w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 transition ${
+            className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 transition ${
               titleResolved
                 ? 'bg-gray-800 border-green-600 text-green-300 focus:ring-green-500'
                 : 'bg-gray-800 border-gray-700 text-gray-100 focus:ring-violet-500'
