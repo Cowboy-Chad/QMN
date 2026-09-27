@@ -24,3 +24,6 @@ Thumbs.db
 .vscode/
 .idea/
 a-previous-backend/
+
+# Claude Code — local settings hold machine-specific config and API tokens
+.claude/settings.local.json
