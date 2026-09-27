@@ -1,3 +1,5 @@
+import asyncio
+
 from youtube_transcript_api import YouTubeTranscriptApi
 
 
@@ -23,6 +25,9 @@ async def fetch_transcript(url: str) -> str:
             "(does not look like a valid YouTube URL)"
         )
 
-    yt = YouTubeTranscriptApi()
-    fetched = yt.fetch(video_id)
-    return " ".join(s.text for s in fetched.snippets)
+    def _sync_fetch():
+        yt = YouTubeTranscriptApi()
+        fetched = yt.fetch(video_id)
+        return " ".join(s.text for s in fetched.snippets)
+
+    return await asyncio.to_thread(_sync_fetch)

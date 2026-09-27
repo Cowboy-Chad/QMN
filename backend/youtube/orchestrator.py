@@ -7,19 +7,26 @@ from backend.youtube.db_helpers import (
 )
 from backend.youtube.service import fetch_transcript, _extract_video_id
 from backend.services.metadata_service import fetch_video_metadata
-from backend.services.fabric_service import run_fabric
+from backend.services.fabric_service import run_fabric, DEFAULT_MODEL
 from backend.services.cost_service import estimate_cost
 
 _jobs: dict[str, asyncio.Task] = {}
 
 
-async def run_youtube_analysis(url: str, pattern: str, model: str | None = None) -> str:
+async def run_youtube_analysis(
+    url: str, pattern: str, model: str | None = None,
+    analyst_name: str = "Anonymous",
+    analyst_display_id: int | None = None,
+) -> str:
     existing_id = await find_existing_job_id("youtube", url, pattern, model)
     if existing_id:
         return existing_id
 
     video_id = _extract_video_id(url) if url else None
-    job_id = await create_job(source="youtube", url=url, pattern=pattern, video_id=video_id)
+    job_id = await create_job(
+        source="youtube", url=url, pattern=pattern, video_id=video_id,
+        analyst_name=analyst_name, analyst_display_id=analyst_display_id,
+    )
     task = asyncio.create_task(_pipeline(job_id, url, pattern, model))
     _jobs[job_id] = task
     return job_id
@@ -56,12 +63,12 @@ async def _pipeline(job_id: str, url: str, pattern: str, model: str | None):
 
         processing_time = round(time.time() - t0, 1)
         try:
-            cost_info = await estimate_cost(transcript, result, model=model or None)
+            cost_info = await estimate_cost(transcript, result, model=model or DEFAULT_MODEL)
         except Exception:
             cost_info = {}
         meta.update({
             "fabric_pattern": pattern,
-            "model": model,
+            "model": model or DEFAULT_MODEL,
             "processing_time_seconds": processing_time,
             **cost_info,
         })
@@ -70,7 +77,7 @@ async def _pipeline(job_id: str, url: str, pattern: str, model: str | None):
 
     except Exception as e:
         processing_time = round(time.time() - t0, 1)
-        meta.update({"fabric_pattern": pattern, "processing_time_seconds": processing_time})
+        meta.update({"fabric_pattern": pattern, "model": model or DEFAULT_MODEL, "processing_time_seconds": processing_time})
         await update_job_status(job_id, "failed", error=str(e), metadata_json=meta, channel_id=channel_id, channel_title=channel_title, video_title=video_title)
     finally:
         _jobs.pop(job_id, None)

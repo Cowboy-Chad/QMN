@@ -1,18 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { Search, Loader2 } from 'lucide-react'
-import { getChannelVideos } from '../api/rumble'
 
-export default function VideoPicker({ onSelect, onClear, queryTitle }) {
-  const [videos, setVideos] = useState([])
+export default function VideoPicker({ onSelect, onClear, queryTitle, videos = [], loading = false, error = '' }) {
   const [query, setQuery] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [count, setCount] = useState(0)
-  const [error, setError] = useState('')
   const [open, setOpen] = useState(false)
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
   const [resolved, setResolved] = useState(false)
   const inputRef = useRef(null)
-  const listRef = useRef(null)
   const lastClick = useRef(0)
   const pastingRef = useRef(false)
 
@@ -64,25 +58,7 @@ export default function VideoPicker({ onSelect, onClear, queryTitle }) {
     }
   }
 
-  useEffect(() => {
-    let cancelled = false
-    getChannelVideos(500)
-      .then((data) => {
-        if (cancelled) return
-        if (data.videos) {
-          setVideos(data.videos)
-          setCount(data.videos.length)
-        }
-        if (data.error) setError(data.error)
-      })
-      .catch((e) => {
-        if (!cancelled) setError(e.message)
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => { cancelled = true }
-  }, [])
+  const count = videos.length
 
   const filtered = query.trim()
     ? videos.filter((v) => {

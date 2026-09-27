@@ -19,6 +19,8 @@ async def get_job(job_id: str) -> Optional[JobStatusResponse]:
             channel_id=job.channel_id,
             channel_title=job.channel_title,
             video_title=job.video_title,
+            analyst_name=job.analyst_name,
+            analyst_display_id=job.analyst_display_id,
             pattern=job.pattern,
             status=job.status,
             transcript=job.transcript,
@@ -39,6 +41,8 @@ async def _job_to_response(job: AnalysisJob) -> JobStatusResponse:
         channel_id=job.channel_id,
         channel_title=job.channel_title,
         video_title=job.video_title,
+        analyst_name=job.analyst_name,
+        analyst_display_id=job.analyst_display_id,
         pattern=job.pattern,
         status=job.status,
         transcript=job.transcript,
@@ -51,7 +55,7 @@ async def _job_to_response(job: AnalysisJob) -> JobStatusResponse:
 
 
 async def find_existing_result(
-    source: str, url: str | None, pattern: str, model: str | None
+    source: str, url: str | None, pattern: str, model: str | None,
 ) -> JobStatusResponse | None:
     if not url:
         return None
@@ -79,7 +83,7 @@ async def find_existing_result(
 
 
 async def find_existing_job_id(
-    source: str, url: str | None, pattern: str, model: str | None
+    source: str, url: str | None, pattern: str, model: str | None,
 ) -> str | None:
     if not url:
         return None
@@ -91,8 +95,7 @@ async def find_existing_job_id(
             .where(AnalysisJob.source == source)
             .where(AnalysisJob.video_url == url)
             .where(AnalysisJob.pattern == pattern)
-            .where(AnalysisJob.status == "completed")
-            .where(AnalysisJob.result.isnot(None))
+            .where(AnalysisJob.status.in_(["pending", "running", "completed"]))
             .order_by(desc(AnalysisJob.created_at))
         )
         result = await session.execute(stmt)
@@ -130,6 +133,8 @@ async def find_existing_transcript(source: str, url: str) -> str | None:
 async def create_job(
     source: str, url: str | None, pattern: str, file_path: str | None = None,
     video_id: str | None = None,
+    analyst_name: str = "Anonymous",
+    analyst_display_id: int | None = None,
 ) -> str:
     async with async_session() as session:
         job = AnalysisJob(
@@ -139,6 +144,8 @@ async def create_job(
             video_id=video_id,
             pattern=pattern,
             status="pending",
+            analyst_name=analyst_name,
+            analyst_display_id=analyst_display_id,
         )
         session.add(job)
         await session.commit()

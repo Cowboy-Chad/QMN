@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
-import { Shield, History, MonitorPlay, Video, Menu, X } from 'lucide-react'
+import { Shield, History, MonitorPlay, Video, Menu, X, LogOut, User } from 'lucide-react'
 import { useJob } from '../context/JobContext'
+import { useAuth } from '../context/AuthContext'
 
 const linkClass = ({ isActive }) =>
   `flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition ${
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
 
 export default function Layout({ children }) {
   const { isJobRunning } = useJob()
+  const { user, isAuthenticated, logout } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
 
   const disabledClass = ' opacity-40 pointer-events-none cursor-not-allowed'
@@ -38,7 +40,7 @@ export default function Layout({ children }) {
       <nav className="border-b border-gray-800 bg-gray-900/80 backdrop-blur sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <Link
-            to="/analysis/youtube"
+            to="/analysis/rumble"
             className={`flex items-center gap-2 text-lg font-bold ${isJobRunning ? 'opacity-40 pointer-events-none' : ''}`}
             onClick={handleNavClick}
           >
@@ -59,6 +61,34 @@ export default function Layout({ children }) {
             ))}
           </div>
 
+          {/* User info + auth section (desktop) */}
+          <div className="hidden md:flex items-center gap-3">
+            {isAuthenticated && user ? (
+              <>
+                <span className="text-sm text-gray-400 flex items-center gap-1.5">
+                  <User size={14} className="text-violet-400" />
+                  {user.first_name}{user.display_id ? <span className="text-gray-500">(#{user.display_id})</span> : null}
+                </span>
+                <button
+                  onClick={logout}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-300 hover:text-red-400 hover:bg-gray-800 rounded-lg transition"
+                  title="Log out"
+                >
+                  <LogOut size={15} />
+                  Logout
+                </button>
+              </>
+            ) : (
+              <Link
+                to="/register"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-violet-400 hover:text-violet-300 hover:bg-gray-800 rounded-lg transition font-medium"
+              >
+                <User size={15} />
+                Subscribe
+              </Link>
+            )}
+          </div>
+
           {/* Mobile hamburger */}
           <button
             onClick={() => setMenuOpen((o) => !o)}
@@ -72,6 +102,29 @@ export default function Layout({ children }) {
         {/* Mobile menu dropdown */}
         {menuOpen && (
           <div className="md:hidden border-t border-gray-800 bg-gray-900 px-4 py-3 space-y-1">
+            {isAuthenticated && user ? (
+              <div className="flex items-center justify-between px-4 py-2 text-sm text-gray-400 border-b border-gray-800 mb-2">
+                <span className="flex items-center gap-1.5">
+                  <User size={14} className="text-violet-400" />
+                  {user.first_name}{user.display_id ? <span className="text-gray-500">(#{user.display_id})</span> : null}
+                </span>
+                <button
+                  onClick={() => { logout(); setMenuOpen(false) }}
+                  className="flex items-center gap-1 text-gray-300 hover:text-red-400 transition"
+                >
+                  <LogOut size={14} /> Logout
+                </button>
+              </div>
+            ) : (
+              <Link
+                to="/register"
+                onClick={handleNavClick}
+                className="flex items-center gap-2 px-4 py-3 rounded-lg font-medium text-violet-400 hover:bg-gray-800 transition mb-2 border-b border-gray-800"
+              >
+                <User size={16} />
+                Subscribe for YouTube Access
+              </Link>
+            )}
             {NAV_ITEMS.map(({ to, icon: Icon, label }) => (
               <NavLink
                 key={to}

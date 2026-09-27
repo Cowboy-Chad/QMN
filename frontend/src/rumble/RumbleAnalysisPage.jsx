@@ -15,6 +15,8 @@ export default function RumbleAnalysisPage() {
   const [error, setError] = useState('')
   const [checkMessage, setCheckMessage] = useState('')
   const [videos, setVideos] = useState([])
+  const [videosLoading, setVideosLoading] = useState(true)
+  const [videosError, setVideosError] = useState('')
   const [titleResolved, setTitleResolved] = useState(false)
   const [pickerQuery, setPickerQuery] = useState('')
   const analyzeRef = useRef(null)
@@ -24,7 +26,8 @@ export default function RumbleAnalysisPage() {
   useEffect(() => {
     getChannelVideos(500).then((data) => {
       if (data.videos) setVideos(data.videos)
-    }).catch(() => {})
+      if (data.error) setVideosError(data.error)
+    }).catch(() => {}).finally(() => setVideosLoading(false))
     // Clear persisted pattern state so it starts fresh on each visit
     sessionStorage.removeItem('pattern-search-rumble')
     sessionStorage.removeItem('pattern-confirmed-rumble')
@@ -100,7 +103,7 @@ export default function RumbleAnalysisPage() {
       <h1 className="text-2xl font-bold mb-6">Freely Analyze</h1>
 
       <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-6 space-y-4">
-        <VideoPicker queryTitle={pickerQuery} onSelect={(videoUrl) => { setUrl(videoUrl); setTitleResolved(false); setPickerQuery(''); focusAnalyze() }} onClear={() => { setUrl(''); setTitleResolved(false); setPickerQuery('') }} />
+        <VideoPicker queryTitle={pickerQuery} videos={videos} loading={videosLoading} error={videosError} onSelect={(videoUrl) => { setUrl(videoUrl); setTitleResolved(false); setPickerQuery(''); focusAnalyze() }} onClear={() => { setUrl(''); setTitleResolved(false); setPickerQuery('') }} />
 
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-1">Rumble URL</label>

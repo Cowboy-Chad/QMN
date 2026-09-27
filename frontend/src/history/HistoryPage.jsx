@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { getHistory } from '../api/history'
 import { Clock, MonitorPlay, Video, Copy, ExternalLink, ChevronDown, ChevronUp, Search, X } from 'lucide-react'
 import MarkdownResult from '../components/MarkdownResult'
+import { formatMetadataLines } from '../utils/metadata'
 
 const SOURCE_ICONS = {
   youtube: MonitorPlay,
@@ -49,6 +50,7 @@ export default function HistoryPage() {
         job.channel_id,
         job.channel_title,
         job.video_title,
+        job.analyst_name,
         job.pattern,
         job.source,
         job.status,
@@ -147,6 +149,7 @@ export default function HistoryPage() {
                     )}
                   </div>
                   <div className="text-sm text-gray-200 mt-0.5 leading-relaxed">
+                    <div><span className="text-violet-400">Analyst:</span> {job.analyst_name}{job.analyst_display_id ? <span className="text-gray-500"> (#{job.analyst_display_id})</span> : ''}</div>
                     <div><span className="text-violet-400">Source:</span> {job.source === 'rumble' ? "Marina Jacobi's Rumble Channel" : (job.source || '—')}</div>
                     <div><span className="text-violet-400">Pattern Used:</span> {job.pattern}</div>
                     <div><span className="text-violet-400">At UTC Time:</span> {(function() {
@@ -168,22 +171,7 @@ export default function HistoryPage() {
                       <div className="bg-gray-800/50 rounded p-3">
                         {(() => {
                           const meta = job.metadata_json || {};
-                          const lines = [
-                            meta.title && `Title: ${meta.title}`,
-                            meta.webpage_url && `Title URL: ${meta.webpage_url}`,
-                            meta.channel && `Channel: ${meta.channel}`,
-                            meta.channel_url && `Channel URL: ${meta.channel_url}`,
-                            meta.view_count != null && `Views: ${meta.view_count.toLocaleString()}`,
-                            meta.duration_display && `Video Length: ${meta.duration_display}`,
-                            meta.upload_date_display && `Published: ${meta.upload_date_display}${meta.upload_date_relative ? ` (${meta.upload_date_relative})` : ''}`,
-                            meta.fabric_pattern && `Fabric Pattern: ${meta.fabric_pattern}`,
-                            meta.model && `Model: ${meta.model}`,
-                            meta.processing_time_seconds != null && `Processing Time: ${meta.processing_time_seconds}s`,
-                            meta.transcript_source && `Transcript Source: ${meta.transcript_source}`,
-                            meta.input_tokens != null && `Tokens: ${meta.input_tokens} in / ${meta.output_tokens} out (via tiktoken)`,
-                            meta.estimated_cost != null && `Pattern Cost: $${Number(meta.estimated_cost).toFixed(4)}`,
-                            meta.pricing_source && `Pricing Source: ${meta.pricing_source}`,
-                          ].filter(Boolean);
+                          const lines = formatMetadataLines(meta);
                           const metaText = lines.length > 0 ? lines.join('\n') : null;
                           return (
                             <>
@@ -211,22 +199,7 @@ export default function HistoryPage() {
                     {job.result && (
                       <button onClick={() => {
                         const meta = job.metadata_json || {};
-                        const prefix = [
-                          meta.title && `Title: ${meta.title}`,
-                          meta.webpage_url && `Title URL: ${meta.webpage_url}`,
-                          meta.channel && `Channel: ${meta.channel}`,
-                          meta.channel_url && `Channel URL: ${meta.channel_url}`,
-                          meta.view_count != null && `Views: ${meta.view_count.toLocaleString()}`,
-                          meta.duration_display && `Video Length: ${meta.duration_display}`,
-                          meta.upload_date_display && `Published: ${meta.upload_date_display}${meta.upload_date_relative ? ` (${meta.upload_date_relative})` : ''}`,
-                          meta.fabric_pattern && `Fabric Pattern: ${meta.fabric_pattern}`,
-                          meta.model && `Model: ${meta.model}`,
-                          meta.processing_time_seconds != null && `Processing Time: ${meta.processing_time_seconds}s`,
-                          meta.transcript_source && `Transcript Source: ${meta.transcript_source}`,
-                          meta.input_tokens != null && `Tokens: ${meta.input_tokens} in / ${meta.output_tokens} out (via tiktoken)`,
-                          meta.estimated_cost != null && `Pattern Cost: $${Number(meta.estimated_cost).toFixed(4)}`,
-                          meta.pricing_source && `Pricing Source: ${meta.pricing_source}`,
-                        ].filter(Boolean).join('\n');
+                        const prefix = formatMetadataLines(meta).join('\n');
                         const full = prefix ? prefix + '\n\n' + job.result : job.result;
                         handleCopy(full, `result-${job.id}`);
                       }} className={`flex items-center gap-1 text-xs px-2 py-1 rounded ${copiedResult === `result-${job.id}` ? 'bg-green-600 hover:bg-green-500' : 'bg-gray-700 hover:bg-gray-600'}`}>

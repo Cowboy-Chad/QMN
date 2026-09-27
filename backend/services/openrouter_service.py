@@ -55,6 +55,8 @@ async def _split_audio(path: str, chunk_seconds: int, out_dir: str) -> list[str]
             stderr=subprocess.DEVNULL,
         )
         await proc.communicate()
+        if proc.returncode != 0:
+            raise RuntimeError(f"ffmpeg failed to create audio chunk {i:03d} (exit code {proc.returncode})")
         paths.append(out_path)
     return paths
 

@@ -59,7 +59,7 @@ def _get_model_for_tokenizer(model: str) -> str:
 
 
 def count_tokens(text: str, model: str = FABRIC_MODEL) -> int:
-    encoding_name = _get_model_for_tokenizer(model)
+    encoding_name = _get_model_for_tokenizer(model or FABRIC_MODEL)
     try:
         enc = tiktoken.get_encoding(encoding_name)
         return len(enc.encode(text))
@@ -68,12 +68,13 @@ def count_tokens(text: str, model: str = FABRIC_MODEL) -> int:
 
 
 async def estimate_cost(input_text: str, output_text: str, model: str = FABRIC_MODEL) -> dict:
+    effective_model = model or FABRIC_MODEL
     pricing = await fetch_live_pricing()
 
-    input_tokens = count_tokens(input_text, model)
-    output_tokens = count_tokens(output_text, model)
+    input_tokens = count_tokens(input_text, effective_model)
+    output_tokens = count_tokens(output_text, effective_model)
 
-    model_pricing = pricing.get(model, {})
+    model_pricing = pricing.get(effective_model, {})
     prompt_price = model_pricing.get("prompt", 0)
     completion_price = model_pricing.get("completion", 0)
 

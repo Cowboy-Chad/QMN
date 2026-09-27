@@ -26,10 +26,30 @@ async def init_db():
 
             # Refresh column list after rename
             cols = {c["name"] for c in inspector.get_columns("analysis_jobs")}
-            for col in ("video_id", "channel_id", "channel_title", "video_title"):
+
+            for col in ("video_id", "channel_id", "channel_title", "video_title", "user_id"):
                 if col not in cols:
                     connection.execute(sa.text(f"ALTER TABLE analysis_jobs ADD COLUMN {col} VARCHAR"))
-        await conn.run_sync(_migrate)
+
+            # New analyst tracking columns
+            if "analyst_name" not in cols:
+                connection.execute(sa.text("ALTER TABLE analysis_jobs ADD COLUMN analyst_name VARCHAR DEFAULT 'Anonymous'"))
+            if "analyst_display_id" not in cols:
+                connection.execute(sa.text("ALTER TABLE analysis_jobs ADD COLUMN analyst_display_id INTEGER"))
+
+            # Users table migrations
+            try:
+                user_cols = {c["name"] for c in inspector.get_columns("users")}
+                if "display_id" not in user_cols:
+                    connection.execute(sa.text("ALTER TABLE users ADD COLUMN display_id INTEGER"))
+                if "first_name" not in user_cols:
+                    connection.execute(sa.text("ALTER TABLE users ADD COLUMN first_name VARCHAR"))
+                if "subscription_status" not in user_cols:
+                    connection.execute(sa.text("ALTER TABLE users ADD COLUMN subscription_status VARCHAR DEFAULT 'free'"))
+                if "subscription_expires_at" not in user_cols:
+                    connection.execute(sa.text("ALTER TABLE users ADD COLUMN subscription_expires_at DATETIME"))
+            except Exception:
+                pass  # users table might not exist yet on fresh install
 
 
 async def get_session() -> AsyncSession:

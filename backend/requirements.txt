@@ -8,3 +8,4 @@ tiktoken
 youtube-transcript-api
 python-multipart
 cloudscraper
+python-jose[cryptography]

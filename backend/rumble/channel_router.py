@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from backend.rumble.channel_service import list_channel_videos
 
@@ -11,4 +11,4 @@ async def get_channel_videos(limit: int = 100):
         videos = await list_channel_videos(max_results=limit)
         return {"videos": videos}
     except Exception as e:
-        return {"error": str(e), "videos": []}
+        raise HTTPException(status_code=502, detail=str(e))

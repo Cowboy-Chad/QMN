@@ -1,29 +1,44 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider } from './context/AuthContext'
 import Layout from './components/Layout'
 import { JobProvider } from './context/JobContext'
 import YouTubeAnalysisPage from './youtube/YouTubeAnalysisPage'
 import RumbleAnalysisPage from './rumble/RumbleAnalysisPage'
 import HistoryPage from './history/HistoryPage'
+import LoginPage from './auth/LoginPage'
+import RegisterPage from './auth/RegisterPage'
+import ProtectedRoute from './auth/ProtectedRoute'
+import SubscriptionGuard from './auth/SubscriptionGuard'
 
 function App() {
   return (
-    <JobProvider>
-      <Routes>
-        <Route path="/" element={<Navigate to="/analysis/youtube" replace />} />
-        <Route
-          path="/analysis/youtube"
-          element={<Layout><YouTubeAnalysisPage /></Layout>}
-        />
-        <Route
-          path="/analysis/rumble"
-          element={<Layout><RumbleAnalysisPage /></Layout>}
-        />
-        <Route
-          path="/history"
-          element={<Layout><HistoryPage /></Layout>}
-        />
-      </Routes>
-    </JobProvider>
+    <AuthProvider>
+      <JobProvider>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/" element={<Navigate to="/analysis/rumble" replace />} />
+          <Route
+            path="/analysis/youtube"
+            element={
+              <SubscriptionGuard>
+                <ProtectedRoute>
+                  <Layout><YouTubeAnalysisPage /></Layout>
+                </ProtectedRoute>
+              </SubscriptionGuard>
+            }
+          />
+          <Route
+            path="/analysis/rumble"
+            element={<Layout><RumbleAnalysisPage /></Layout>}
+          />
+          <Route
+            path="/history"
+            element={<Layout><HistoryPage /></Layout>}
+          />
+        </Routes>
+      </JobProvider>
+    </AuthProvider>
   )
 }
 

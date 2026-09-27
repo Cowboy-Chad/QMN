@@ -11,11 +11,24 @@ from backend.youtube.router import router as youtube_router
 from backend.rumble.router import router as rumble_router
 from backend.rumble.channel_router import router as channel_router
 from backend.history.router import router as history_router
+from backend.auth.router import router as auth_router
+from backend.payments.router import router as payments_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+    # Clean up any jobs left in pending/running from a previous server instance
+    from backend.database import async_session
+    from backend.models import AnalysisJob
+    from sqlalchemy import update
+    async with async_session() as session:
+        await session.execute(
+            update(AnalysisJob)
+            .where(AnalysisJob.status.in_(["pending", "running"]))
+            .values(status="failed", error="Server restarted")
+        )
+        await session.commit()
     yield
 
 
@@ -44,3 +57,5 @@ app.include_router(youtube_router)
 app.include_router(rumble_router)
 app.include_router(channel_router)
 app.include_router(history_router)
+app.include_router(auth_router)
+app.include_router(payments_router)

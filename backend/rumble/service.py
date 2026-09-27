@@ -140,6 +140,7 @@ async def download_and_transcribe(url: str) -> tuple[str, float]:
                 video_url,
                 headers={"Referer": "https://rumble.com/"},
                 timeout=600,
+                stream=True,
             )
             r.raise_for_status()
             with open(audio_path, "wb") as f:
