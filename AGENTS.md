@@ -3,7 +3,7 @@
 Self-hosted OSINT app for analyzing YouTube and Rumble videos using AI-powered analysis patterns (Fabric CLI → OpenRouter API).
 
 ```
-React 19 (Vite 8, port 5173) → FastAPI (port 8000) → fabric CLI → OpenRouter API
+React 19 (Vite 8, port 5174) → FastAPI (port 8000) → fabric CLI → OpenRouter API
                                                                 ↕
                                                            SQLite (marina_jacobi.db)
 ```
@@ -25,10 +25,10 @@ python3 -m venv .venv && source .venv/bin/activate && pip install -r requirement
 ./run.sh                              # uvicorn on 0.0.0.0:8000 --reload
 
 # Frontend (separate terminal)
-cd frontend && npm install && npm run dev  # Vite on localhost:5173
+cd frontend && npm install && npm run dev  # Vite on localhost:5174
 ```
 
-Open http://localhost:5173 — root redirects to `/analysis/rumble` (free, no signup). Clicking YouTube triggers a subscription modal prompting registration + payment.
+Open http://localhost:5174 — root redirects to `/analysis/rumble` (free, no signup). Clicking YouTube triggers a subscription modal prompting registration + payment.
 
 ---
 
@@ -277,7 +277,7 @@ frontend/
 ## User Flow Details
 
 ### Rumble Analysis (`/analysis/rumble`) — Free, No Login Required
-1. Open `http://localhost:5173` → lands on Rumble analysis page
+1. Open `http://localhost:5174` → lands on Rumble analysis page
 2. **VideoPicker** shows searchable dropdown of ~400-450 channel videos (fetched from Rumble, DB-cached, S/E sorted)
    - Pick a video → URL auto-fills, input turns green (title-resolved)
    - Paste a title or URL → auto-matches to channel video if found
@@ -403,6 +403,8 @@ Displayed fields (when present in metadata_json):
 - **No cancellation mechanism:** Running background tasks cannot be cancelled. The `_jobs` dict tracks task lifecycle but provides no cancel interface.
 
 ### Frontend
+- **Dev server port is set in `frontend/vite.config.js`, NOT in this doc** — editing AGENTS.md does not change the port. Current setting: `server: { port: 5174, strictPort: true }`. If you ever change the port again, you must **also** update `allow_origins` in `backend/main.py` (currently `http://localhost:5174` + `http://127.0.0.1:5174`), or the browser will block every API call with a CORS error. Docs to keep in sync: AGENTS.md, SETUP.md, README.md.
+- **`strictPort: true`** means `npm run dev` fails loudly if 5174 is occupied instead of silently bumping to 5175 — deliberate, because CORS only allowlists 5174.
 - **`index.html` title** still shows "OSINT-1" — not rebranded to "Marina's Wisdom"
 - **MetadataDisplay.jsx** referenced in earlier docs does not exist in current code — metadata display is inlined in AnalysisRunner.jsx and HistoryPage.jsx
 - **Duplicated `request()` helper** in each API module (youtube.js, rumble.js, history.js) — identical code repeated 3 times
@@ -448,7 +450,7 @@ Displayed fields (when present in metadata_json):
 
 ```bash
 # Frontend
-cd frontend && npm run dev            # Dev server with HMR on localhost:5173
+cd frontend && npm run dev            # Dev server with HMR on localhost:5174
 cd frontend && npm run build           # Production build
 cd frontend && npm run lint            # oxlint (no ESLint)
 cd frontend && npm run preview         # Preview production build

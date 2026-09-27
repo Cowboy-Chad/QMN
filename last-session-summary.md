@@ -113,7 +113,7 @@ source .venv/bin/activate && ./run.sh
 cd /home/cowboy/000/cve-marina-1/frontend && npm run dev
 ```
 
-Open http://localhost:5173 → lands on free Rumble analysis. Click YouTube → subscription modal → register (first name only) → mock PayPal → YouTube access.
+Open http://localhost:5174 → lands on free Rumble analysis. Click YouTube → subscription modal → register (first name only) → mock PayPal → YouTube access.
 
 **Key files to review:**
 - [AGENTS.md](AGENTS.md) — Full project reference (updated for freemium)

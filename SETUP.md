@@ -68,7 +68,7 @@ npm install
 npm run dev
 ```
 
-**The frontend starts on `http://localhost:5173`.**
+**The frontend starts on `http://localhost:5174`** (set in `frontend/vite.config.js`).
 
 ---
 
@@ -76,7 +76,7 @@ npm run dev
 
 | Step | Action | Result |
 |------|--------|--------|
-| 1 | Open `http://localhost:5173` | Redirected to **Rumble Analysis** page (`/analysis/rumble`) — **free, no login needed** |
+| 1 | Open `http://localhost:5174` | Redirected to **Rumble Analysis** page (`/analysis/rumble`) — **free, no login needed** |
 | 2 | Pick a Rumble video and pattern, click "Analyze" | Analysis runs immediately — no auth required |
 | 3 | Click **YouTube** in the nav bar | **Subscription modal** appears |
 | 4 | Click "Subscribe $7/month" | Redirected to `/register` |
@@ -173,4 +173,4 @@ curl http://localhost:8000/api/history
 ```
 
 ### Frontend
-Open `http://localhost:5173` — you land on the free Rumble analysis page. The YouTube tab shows a subscription modal prompting registration/payment.
+Open `http://localhost:5174` — you land on the free Rumble analysis page. The YouTube tab shows a subscription modal prompting registration/payment.
