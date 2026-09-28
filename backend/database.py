@@ -51,6 +51,8 @@ async def init_db():
             except Exception:
                 pass  # users table might not exist yet on fresh install
 
+        await conn.run_sync(_migrate)
+
 
 async def get_session() -> AsyncSession:
     async with async_session() as session:

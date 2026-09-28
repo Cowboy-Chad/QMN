@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
-import { Shield, History, MonitorPlay, Video, Menu, X, LogOut, User } from 'lucide-react'
+import { Shield, History, MonitorPlay, Video, Menu, X, LogOut, User, Sparkles, CreditCard } from 'lucide-react'
 import { useJob } from '../context/JobContext'
 import { useAuth } from '../context/AuthContext'
+
+const TRIAL_LOW_WATER_MARK = 5
 
 const linkClass = ({ isActive }) =>
   `flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition ${
@@ -26,8 +28,19 @@ const NAV_ITEMS = [
 
 export default function Layout({ children }) {
   const { isJobRunning } = useJob()
-  const { user, isAuthenticated, logout } = useAuth()
+  const { user, isAuthenticated, logout, isTrial, isSubscribed, trialUsesRemaining } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
+
+  // Only show the trial badge when the trial is what's granting access. A subscriber
+  // also has a trial allowance on their account, but it isn't what they're using.
+  const showTrialBadge = isAuthenticated && isTrial && !isSubscribed
+  const trialLow = showTrialBadge && trialUsesRemaining <= TRIAL_LOW_WATER_MARK
+
+  const trialBadgeClass = `flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${
+    trialLow
+      ? 'border-amber-700/50 bg-amber-900/20 text-amber-300'
+      : 'border-violet-700/50 bg-violet-900/20 text-violet-300'
+  }`
 
   const disabledClass = ' opacity-40 pointer-events-none cursor-not-allowed'
 
@@ -65,6 +78,12 @@ export default function Layout({ children }) {
           <div className="hidden md:flex items-center gap-3">
             {isAuthenticated && user ? (
               <>
+                {showTrialBadge && (
+                  <Link to="/analysis/youtube" className={trialBadgeClass} title="Free-trial analyses remaining">
+                    <Sparkles size={12} />
+                    Trial · {trialUsesRemaining} left
+                  </Link>
+                )}
                 <span className="text-sm text-gray-400 flex items-center gap-1.5">
                   <User size={14} className="text-violet-400" />
                   {user.first_name}{user.display_id ? <span className="text-gray-500">(#{user.display_id})</span> : null}
@@ -83,8 +102,8 @@ export default function Layout({ children }) {
                 to="/register"
                 className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-violet-400 hover:text-violet-300 hover:bg-gray-800 rounded-lg transition font-medium"
               >
-                <User size={15} />
-                Subscribe
+                <CreditCard size={15} />
+                Get YouTube access
               </Link>
             )}
           </div>
@@ -103,26 +122,38 @@ export default function Layout({ children }) {
         {menuOpen && (
           <div className="md:hidden border-t border-gray-800 bg-gray-900 px-4 py-3 space-y-1">
             {isAuthenticated && user ? (
-              <div className="flex items-center justify-between px-4 py-2 text-sm text-gray-400 border-b border-gray-800 mb-2">
-                <span className="flex items-center gap-1.5">
-                  <User size={14} className="text-violet-400" />
-                  {user.first_name}{user.display_id ? <span className="text-gray-500">(#{user.display_id})</span> : null}
-                </span>
-                <button
-                  onClick={() => { logout(); setMenuOpen(false) }}
-                  className="flex items-center gap-1 text-gray-300 hover:text-red-400 transition"
-                >
-                  <LogOut size={14} /> Logout
-                </button>
-              </div>
+              <>
+                <div className="flex items-center justify-between px-4 py-2 text-sm text-gray-400 border-b border-gray-800 mb-2">
+                  <span className="flex items-center gap-1.5">
+                    <User size={14} className="text-violet-400" />
+                    {user.first_name}{user.display_id ? <span className="text-gray-500">(#{user.display_id})</span> : null}
+                  </span>
+                  <button
+                    onClick={() => { logout(); setMenuOpen(false) }}
+                    className="flex items-center gap-1 text-gray-300 hover:text-red-400 transition"
+                  >
+                    <LogOut size={14} /> Logout
+                  </button>
+                </div>
+                {showTrialBadge && (
+                  <Link
+                    to="/analysis/youtube"
+                    onClick={handleNavClick}
+                    className={`${trialBadgeClass} w-fit mx-4 mb-2`}
+                  >
+                    <Sparkles size={12} />
+                    Trial · {trialUsesRemaining} left
+                  </Link>
+                )}
+              </>
             ) : (
               <Link
                 to="/register"
                 onClick={handleNavClick}
                 className="flex items-center gap-2 px-4 py-3 rounded-lg font-medium text-violet-400 hover:bg-gray-800 transition mb-2 border-b border-gray-800"
               >
-                <User size={16} />
-                Subscribe for YouTube Access
+                <CreditCard size={16} />
+                Get YouTube Access
               </Link>
             )}
             {NAV_ITEMS.map(({ to, icon: Icon, label }) => (

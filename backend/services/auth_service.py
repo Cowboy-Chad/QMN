@@ -29,6 +29,9 @@ def _get_jwt_secret() -> str:
 JWT_ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS256")
 JWT_EXPIRE_MINUTES = int(os.environ.get("JWT_EXPIRE_MINUTES", "1440"))
 
+# Free-trial allowance granted to every new account at signup.
+TRIAL_USE_LIMIT = 33
+
 
 def create_access_token(data: dict) -> str:
     to_encode = data.copy()
@@ -63,23 +66,66 @@ async def get_user_by_id(user_id: str) -> User | None:
         return await session.get(User, user_id)
 
 
-async def register_user(first_name: str) -> User:
-    """Create a new user with a display ID. Subscription remains 'free' until mock payment."""
-    async with async_session() as session:
-        display_id = await _next_display_id()
-        user = User(
-            id=str(uuid.uuid4()),
-            display_id=display_id,
-            first_name=first_name,
-            subscription_status="free",
-        )
-        session.add(user)
-        await session.commit()
-        return user
+def _first_name_from(full_name: str) -> str:
+    """The users.first_name column is NOT NULL and drives the nav bar
+    ("Sarah (#7)") and analyst attribution. Derive it from the first token of
+    the full name so every existing display path keeps working."""
+    return full_name.split()[0][:50]
+
+
+async def register_user(full_name: str, email: str, password: str) -> User | None:
+    """Create a YouTube account. Returns None if the email is already registered.
+
+    `email` must already be normalized (lowercased) by the caller.
+    Every account is granted TRIAL_USE_LIMIT free analyses, whether or not the
+    user goes on to subscribe — so a lapsed subscriber is not worse off than a
+    new one.
+    """
+    from sqlalchemy import select
+    from sqlalchemy.exc import IntegrityError
+    from backend.services.password_service import hash_password
+
+    password_hash = hash_password(password)
+    first_name = _first_name_from(full_name)
+
+    # display_id comes from its own session, so two concurrent signups can compute
+    # the same id. The pre-check gives a clean answer in the common case; the
+    # IntegrityError catch below is the backstop, retrying only on a display_id
+    # collision and reporting "taken" for an email collision.
+    for _ in range(3):
+        async with async_session() as session:
+            existing = await session.execute(select(User.id).where(User.email == email))
+            if existing.first() is not None:
+                return None
+            user = User(
+                id=str(uuid.uuid4()),
+                display_id=await _next_display_id(),
+                first_name=first_name,
+                full_name=full_name,
+                email=email,
+                password_hash=password_hash,
+                subscription_status="free",
+                trial_uses_remaining=TRIAL_USE_LIMIT,
+            )
+            session.add(user)
+            try:
+                await session.commit()
+                return user
+            except IntegrityError as e:
+                await session.rollback()
+                if "email" in str(e).lower():
+                    return None  # a real duplicate
+                continue  # display_id collision — recompute and retry
+
+    raise RuntimeError("Could not allocate a display id after 3 attempts")
 
 
 async def activate_subscription(user_id: str) -> User | None:
-    """Mock payment — mark user's subscription as active for 30 days."""
+    """Mock payment — mark user's subscription as active for 30 days.
+
+    Deliberately leaves trial_uses_remaining untouched: subscribing must not
+    consume the trial, and a lapsed subscriber keeps whatever was left.
+    """
     async with async_session() as session:
         user = await session.get(User, user_id)
         if user is None:
@@ -90,13 +136,31 @@ async def activate_subscription(user_id: str) -> User | None:
         return user
 
 
-async def login_by_display_id(display_id: int, first_name: str) -> User | None:
-    """Look up user by display ID and verify first name matches."""
+async def login_by_email(email: str, password: str) -> User | None:
+    """Look up by email and verify the password.
+
+    Returns None for BOTH "no such email" and "wrong password" so the endpoint
+    cannot be used to enumerate which emails have accounts.
+    """
     from sqlalchemy import select
+    from backend.services.password_service import verify_password
+
     async with async_session() as session:
-        stmt = select(User).where(User.display_id == display_id).where(User.first_name == first_name)
+        stmt = select(User).where(User.email == email)
         result = await session.execute(stmt)
-        return result.scalar_one_or_none()
+        user = result.scalar_one_or_none()
+        if user is None:
+            return None
+        if not verify_password(password, user.password_hash):
+            return None
+        return user
+
+
+async def get_trial_uses_remaining(user_id: str) -> int | None:
+    """Remaining free-trial analyses, or None if this account has no trial."""
+    async with async_session() as session:
+        user = await session.get(User, user_id)
+        return user.trial_uses_remaining if user else None
 
 
 async def is_subscription_active(user: User) -> bool:

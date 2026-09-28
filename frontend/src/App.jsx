@@ -18,14 +18,17 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/" element={<Navigate to="/analysis/rumble" replace />} />
+          {/* ProtectedRoute must run BEFORE SubscriptionGuard: the guard assumes an
+              authenticated user, and nested the other way round its own /login
+              redirect was unreachable (the guard rendered the modal instead). */}
           <Route
             path="/analysis/youtube"
             element={
-              <SubscriptionGuard>
-                <ProtectedRoute>
-                  <Layout><YouTubeAnalysisPage /></Layout>
-                </ProtectedRoute>
-              </SubscriptionGuard>
+              <ProtectedRoute>
+                <SubscriptionGuard>
+                  <YouTubeAnalysisPage />
+                </SubscriptionGuard>
+              </ProtectedRoute>
             }
           />
           <Route
@@ -36,6 +39,8 @@ function App() {
             path="/history"
             element={<Layout><HistoryPage /></Layout>}
           />
+          {/* Unknown paths land on the free Rumble page rather than a blank screen. */}
+          <Route path="*" element={<Navigate to="/analysis/rumble" replace />} />
         </Routes>
       </JobProvider>
     </AuthProvider>

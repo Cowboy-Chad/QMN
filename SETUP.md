@@ -1,6 +1,8 @@
 # Full Startup Guide — Marina's Wisdom
 
-**Freemium Model:** Rumble (Marina Jacobi) analysis is **free** — no signup required. YouTube analysis requires a **$7/month subscription** via mock PayPal payment system.
+**Freemium Model:** Rumble (Marina Jacobi) analysis is **free** — no signup required, and its history is shared with everyone. YouTube analysis requires an account (full name + email + password) and either a **33-use free trial** or a **$7/month subscription** via mock PayPal. YouTube history is private to each account.
+
+> **There is no password reset.** Nothing is emailed — a forgotten password permanently costs the account and its private YouTube history. The signup and login pages say so.
 
 ---
 
@@ -51,7 +53,7 @@ pip install -r requirements.txt
 **The backend starts on `http://0.0.0.0:8000`.**
 
 - First run auto-creates `marina_jacobi.db` (SQLite database) at the repo root.
-- First run auto-generates `.jwt_secret` (JWT signing key) at the repo root.
+- Auto-generates **`backend/.jwt_secret`** (JWT signing key) the first time a token is signed — not at startup, and not at the repo root. It is **gitignored**; never commit it.
 
 ---
 
@@ -112,7 +114,7 @@ cd /home/cowboy/000/cve-marina-1/frontend && npm run dev
 | `TRANSCRIPTION_MODEL` | `openai/gpt-audio-mini` | Model for audio transcription |
 | `TRANSCRIPTION_CHUNK_SECONDS` | `600` | Audio chunk duration (10 min) |
 | `RUMBLE_CHANNEL` | `MarinaJacobi` | Only allow Rumble videos from this channel |
-| `JWT_SECRET` | Auto-generated (`.jwt_secret`) | HMAC key for JWT token signing |
+| `JWT_SECRET` | Auto-generated (`backend/.jwt_secret`) | HMAC key for JWT token signing |
 | `JWT_EXPIRE_MINUTES` | `1440` (24 hours) | JWT token lifetime |
 
 ---
@@ -125,12 +127,13 @@ curl http://localhost:8000/health
 # → {"status":"ok"}
 ```
 
-### Register a test user (first name only — no email, no password!)
+### Register a test user (full name + email + password)
 ```bash
 curl -X POST http://localhost:8000/api/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"first_name":"Test"}'
-# → {"access_token":"...","token_type":"bearer","user":{"display_id":1,"first_name":"Test","subscription_status":"free",...}}
+  -d '{"full_name":"Test User","email":"Test@Example.com","password":"hunter2hunter2"}'
+# → {"access_token":"...","token_type":"bearer","user":{"display_id":1,"first_name":"Test","full_name":"Test User","email":"test@example.com","subscription_status":"free","trial_uses_remaining":33,...}}
+# Email is normalized to lowercase. password_hash is never returned. Password rules: 8+ chars, 72 bytes max.
 ```
 
 ### Activation (mock PayPal payment)
@@ -141,21 +144,25 @@ curl -X POST http://localhost:8000/api/payments/mock-subscribe \
 # → {"success":true,"subscription_status":"active",...}
 ```
 
-### Login (by display ID + first name)
+### Login (email + password)
 ```bash
 curl -X POST http://localhost:8000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"display_id":1,"first_name":"Test"}'
+  -d '{"email":"test@example.com","password":"hunter2hunter2"}'
 # → {"access_token":"...","token_type":"bearer","user":{...}}
+# A wrong password and a nonexistent email return the SAME 401 message — the endpoint
+# must not be usable to discover which emails have accounts.
 ```
 
-### YouTube analysis (requires auth + subscription)
+### YouTube analysis (requires auth + a live trial or subscription)
 ```bash
 curl -X POST http://localhost:8000/api/youtube/analyze \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{"video_url":"https://www.youtube.com/watch?v=dQw4w9WgXcQ","pattern":"summarize"}'
-# → {"job_id":"...","status":"pending"}
+# → {"job_id":"...","status":"pending","trial_uses_remaining":32}
+# A duplicate (same URL + pattern) returns the existing job_id and does NOT decrement.
+# A failed analysis refunds the use. At 0 remaining → 402 {"detail":{"code":"trial_exhausted"}}.
 ```
 
 ### Rumble analysis (public — no token needed!)

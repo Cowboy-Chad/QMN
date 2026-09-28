@@ -1,6 +1,13 @@
-from pydantic import BaseModel, field_serializer
+from pydantic import BaseModel, field_serializer, ConfigDict
 from typing import Optional
 from datetime import datetime
+
+
+def error_detail(code: str, message: str, **extra) -> dict:
+    """Structured HTTPException detail so the frontend can branch on `code`
+    instead of printing a raw JSON body. Serializes as
+    {"detail": {"code": ..., "message": ..., **extra}}."""
+    return {"code": code, "message": message, **extra}
 
 
 class JobStatusResponse(BaseModel):
@@ -29,17 +36,19 @@ class JobStatusResponse(BaseModel):
         return dt.isoformat()
 
 
-# ── Auth schemas (simplified — no passwords, no emails) ──
+# ── Auth schemas (email + password for YouTube accounts; Rumble needs no account) ──
 
 class RegisterRequest(BaseModel):
-    """Register with just a first name. Subscription activated after mock payment."""
-    first_name: str
+    """Create a YouTube account. Every new account is granted the free trial."""
+    full_name: str
+    email: str
+    password: str
 
 
 class LoginRequest(BaseModel):
-    """Login with display ID + first name."""
-    display_id: int
-    first_name: str
+    """Login with email + password."""
+    email: str
+    password: str
 
 
 class TokenResponse(BaseModel):
@@ -49,11 +58,21 @@ class TokenResponse(BaseModel):
 
 
 class UserResponse(BaseModel):
+    # from_attributes lets one helper build this from a User row instead of three
+    # hand-written copies. Only the fields declared here are serialized, so
+    # password_hash is never exposed.
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     display_id: Optional[int] = None
     first_name: str
+    full_name: Optional[str] = None
+    email: Optional[str] = None
     subscription_status: str = "free"
     subscription_expires_at: Optional[datetime] = None
+    # NULL = no trial on this account; 0 = trial exhausted. The frontend needs the
+    # distinction to choose between "subscribe" and "your trial is used up".
+    trial_uses_remaining: Optional[int] = None
     created_at: datetime
 
     @field_serializer("created_at", "subscription_expires_at")

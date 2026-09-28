@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getHistory } from '../api/history'
-import { Clock, MonitorPlay, Video, Copy, ExternalLink, ChevronDown, ChevronUp, Search, X } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
+import { Clock, MonitorPlay, Video, Copy, ExternalLink, ChevronDown, ChevronUp, Search, X, Lock } from 'lucide-react'
 import MarkdownResult from '../components/MarkdownResult'
 import { formatMetadataLines } from '../utils/metadata'
 
@@ -15,6 +16,7 @@ const SOURCE_COLORS = {
 }
 
 export default function HistoryPage() {
+  const { isAuthenticated, user } = useAuth()
   const [jobs, setJobs] = useState([])
   const [source, setSource] = useState('')
   const [query, setQuery] = useState('')
@@ -22,13 +24,18 @@ export default function HistoryPage() {
   const [expandedId, setExpandedId] = useState(null)
   const [copiedResult, setCopiedResult] = useState(null)
 
+  // `user?.id` and `isAuthenticated` are dependencies because the server scopes the
+  // result to the caller: without them this list would stay stale across a login or
+  // logout (it does not re-fetch today).
   useEffect(() => {
+    let cancelled = false
     setLoading(true)
     getHistory(source ? { source } : {})
-      .then(setJobs)
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [source])
+      .then((data) => { if (!cancelled) setJobs(data) })
+      .catch(() => { if (!cancelled) setJobs([]) })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [source, isAuthenticated, user?.id])
 
   // Normalize season/episode spacing so "S3E5" matches "S3 E5" and vice versa
   const norm = (s) => s.replace(/s\s*(\d+)\s*e\s*(\d+)/gi, 's$1e$2')
@@ -117,7 +124,18 @@ export default function HistoryPage() {
 
       {!loading && filteredJobs.length === 0 && (
         <div className="text-gray-500 text-center py-12">
-          {query ? 'No matches for your search.' : 'No results yet. Run an analysis first.'}
+          {query ? (
+            'No matches for your search.'
+          ) : source === 'youtube' && !isAuthenticated ? (
+            // YouTube history is per-user, so a logged-out visitor sees none of it.
+            // Saying "no results yet" here would be misleading.
+            <span className="inline-flex flex-col items-center gap-2">
+              <Lock size={20} className="text-gray-600" />
+              YouTube history is private. Sign in to see your own analyses.
+            </span>
+          ) : (
+            'No results yet. Run an analysis first.'
+          )}
         </div>
       )}
 

@@ -7,6 +7,9 @@ build/
 .venv/
 venv/
 *.db
+# Database backups moved aside during a reset (e.g. marina_jacobi.db.bak-2026-09-27).
+# Keep them on disk for recovery, but never in git history.
+*.db.bak*
 
 # Node
 node_modules/
@@ -19,6 +22,10 @@ Thumbs.db
 # Env
 .env
 *.env.local
+
+# JWT signing key — auto-generated per install, never shared. A committed secret
+# lets anyone with repo access forge a token for any account.
+.jwt_secret
 
 # IDE
 .vscode/

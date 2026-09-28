@@ -21,14 +21,30 @@ async def lifespan(app: FastAPI):
     # Clean up any jobs left in pending/running from a previous server instance
     from backend.database import async_session
     from backend.models import AnalysisJob
-    from sqlalchemy import update
+    from backend.services.trial_service import refund_trial_use
+    from sqlalchemy import select, update
     async with async_session() as session:
-        await session.execute(
-            update(AnalysisJob)
-            .where(AnalysisJob.status.in_(["pending", "running"]))
-            .values(status="failed", error="Server restarted")
+        # Capture the ids first: this set is exactly the jobs whose pipeline never
+        # reached an ending, so the trial uses they consumed were never refunded by
+        # the in-process handler.
+        stuck = await session.execute(
+            select(AnalysisJob.id).where(AnalysisJob.status.in_(["pending", "running"]))
         )
-        await session.commit()
+        stuck_ids = [row[0] for row in stuck.all()]
+        if stuck_ids:
+            await session.execute(
+                update(AnalysisJob)
+                .where(AnalysisJob.id.in_(stuck_ids))
+                .values(status="failed", error="Server restarted")
+            )
+            await session.commit()
+
+    # Give back the trial uses those jobs spent. refund_trial_use claims each job's
+    # flag before crediting, so a job that already failed normally (and refunded in
+    # the pipeline) cannot be refunded twice here.
+    for job_id in stuck_ids:
+        await refund_trial_use(job_id)
+
     yield
 
 

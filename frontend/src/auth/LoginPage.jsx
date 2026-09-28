@@ -1,12 +1,15 @@
 import { useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { Shield } from 'lucide-react'
+import { Shield, AlertTriangle } from 'lucide-react'
+
+const inputClass =
+  'w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent'
 
 export default function LoginPage() {
   const { login, isAuthenticated } = useAuth()
-  const [displayId, setDisplayId] = useState('')
-  const [firstName, setFirstName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -14,21 +17,17 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    const id = parseInt(displayId, 10)
-    if (!displayId || isNaN(id) || id < 1) {
-      setError('Enter your User ID number')
-      return
-    }
-    if (!firstName.trim()) {
-      setError('Enter your first name')
+    if (!email.trim() || !password) {
+      setError('Enter your email and password')
       return
     }
     setError('')
     setBusy(true)
     try {
-      await login(id, firstName.trim())
+      await login(email.trim(), password)
     } catch (err) {
-      setError(err.message || 'Login failed — check your ID and name')
+      // The server returns one message for both "no such email" and "wrong password".
+      setError(err.message || 'Login failed — check your email and password')
     } finally {
       setBusy(false)
     }
@@ -45,26 +44,27 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">User ID</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Email</label>
             <input
-              type="number"
-              min="1"
-              value={displayId}
-              onChange={(e) => setDisplayId(e.target.value)}
-              className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-              placeholder="e.g. 7"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className={inputClass}
+              placeholder="you@example.com"
+              autoComplete="email"
               autoFocus
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">First Name</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Password</label>
             <input
-              type="text"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-              placeholder="Your first name"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className={inputClass}
+              placeholder="Your password"
+              autoComplete="current-password"
             />
           </div>
 
@@ -83,10 +83,21 @@ export default function LoginPage() {
           </button>
         </form>
 
+        {/* Static, not a link: there is no reset flow and no email is ever sent, so
+            offering a link would be a dead end. */}
+        <div className="mt-4 flex items-start gap-2 text-xs text-gray-400 bg-gray-900 border border-gray-800 rounded-lg px-3 py-2">
+          <AlertTriangle size={14} className="mt-0.5 shrink-0 text-amber-400/80" />
+          <span>
+            <span className="text-gray-300">Forgot your password?</span> Accounts cannot be
+            recovered — there is no reset and nothing is emailed. If you have lost it, create
+            a new account.
+          </span>
+        </div>
+
         <p className="text-center text-gray-400 text-sm mt-6">
           New here?{' '}
           <Link to="/register" className="text-violet-400 hover:text-violet-300 underline">
-            Subscribe for $7/month
+            Get YouTube access
           </Link>
         </p>
       </div>
