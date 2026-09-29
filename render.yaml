@@ -53,7 +53,12 @@ services:
       # Replace with the real Netlify URL (step 3 above).
       - key: CORS_ORIGINS
         value: https://REPLACE-ME.netlify.app
-      # sync: false -> Render prompts for the value; it is never stored in git.
+      # sync: false -> Render prompts for the value and keeps it out of git.
+      # Set it in the dashboard: marina-backend -> Environment -> OPENROUTER_API_KEY.
+      # This is the ONLY way the key reaches the deployed app — the image has no
+      # ~/.config/fabric/.env, and .dockerignore keeps .env out of the build, so a
+      # deploy without this set fails every analysis with 401 Missing Authentication.
+      # Rotating the key means updating it here, not rebuilding.
       - key: OPENROUTER_API_KEY
         sync: false
       - key: FABRIC_MODEL

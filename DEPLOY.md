@@ -66,13 +66,29 @@ What the blueprint sets, and why:
 |---|---|---|
 | `DATABASE_URL` | from `marina-db` | The **internal** connection string: same private network, no TLS. `database.py` normalizes the scheme and strips libpq-only params, so an external URL would also work. |
 | `JWT_SECRET` | `generateValue: true` | Render generates and holds it. **Required in production** — the app refuses to boot on Render without it. |
-| `OPENROUTER_API_KEY` | `sync: false` | Render prompts for it in the dashboard. Never stored in git. |
+| `OPENROUTER_API_KEY` | `sync: false` | **You must set this by hand.** See below. |
 | `CORS_ORIGINS` | `https://REPLACE-ME.netlify.app` | Fix this in step 4. |
 | `APP_ENV` | `production` | |
 | `FABRIC_MODEL` / `FABRIC_VENDOR` | `deepseek/deepseek-v4-flash` / `OpenRouter` | Model is hard-wired; there is no UI selector. |
 | `TIKTOKEN_CACHE_DIR` | `/opt/tiktoken` | Baked into the image; repeated so a rebuild is not needed to change it. |
 | `MARINA_TMP_DIR` | `/tmp/marina` | Audio scratch space, wiped at boot. |
 | `RUMBLE_MAX_DOWNLOAD_MB` | `1500` | Ceiling on the one path that still writes media to disk. |
+
+### Setting the OpenRouter key
+
+`OPENROUTER_API_KEY` is the one value the blueprint cannot fill in. It is declared with
+`sync: false`, which means Render prompts for it and never writes it to git.
+
+**Dashboard → `marina-backend` → Environment → add `OPENROUTER_API_KEY` → Save.** The service
+restarts, and the value takes effect without a rebuild.
+
+This is the only path the key has into the deployed app. The image deliberately contains no
+`~/.config/fabric/.env` (fabric requires that file to *exist*, so the Dockerfile creates it — but
+empty), and `.dockerignore` keeps your local `.env` out of the build. Set this and the app works;
+leave it unset and **every analysis fails with `401 Missing Authentication header`** while the
+health check stays green, so the deploy will look healthy and be useless.
+
+Changing the key later is a dashboard edit, not a redeploy. There is no need to rebuild the image.
 
 ### The circular part
 
@@ -167,6 +183,20 @@ cd frontend && npm run dev               # http://localhost:5174
 
 No `.env` is required — the defaults in the code match `docker-compose.yml`, and `JWT_SECRET` falls
 back to a generated `backend/.jwt_secret`. See `.env.example` for every variable.
+
+**For the OpenRouter key locally, put it in a repo-root `.env`:**
+
+```bash
+cp .env.example .env      # then edit .env and set OPENROUTER_API_KEY=...
+```
+
+`backend/run.sh` loads that file before starting uvicorn, so it reaches both the app and the fabric
+subprocess. It is gitignored and dockerignored. Anything already exported in your shell wins over
+the file, so `OPENROUTER_API_KEY=... ./run.sh` also works and needs no file at all.
+
+You do **not** also need the key in `~/.config/fabric/.env` — the environment is checked first, and
+fabric itself prefers a real env var over its own config file. That file only matters if you run the
+`fabric` CLI directly, outside this app.
 
 **Never run `alembic downgrade` against production.** It has no confirmation prompt.
 

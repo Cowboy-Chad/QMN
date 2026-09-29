@@ -19,7 +19,10 @@ def _key_from_fabric_env() -> str | None:
         for line in f:
             line = line.strip()
             if line.startswith("OPENROUTER_API_KEY="):
-                return line.split("=", 1)[1].strip("\"'")
+                # An empty value means "not configured here" rather than a key of
+                # "". Returning "" would sail past the `or` below and fail later as
+                # a 401 that looks like a bad key instead of a missing one.
+                return line.split("=", 1)[1].strip("\"'") or None
     return None
 
 

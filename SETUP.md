@@ -21,9 +21,10 @@ docker --version
 # Fabric CLI on PATH
 fabric --version
 
-# OpenRouter API key: as an environment variable, or in fabric's config.
-# The app checks the environment first and falls back to this file.
-echo "OPENROUTER_API_KEY=sk-or-v1-..." > ~/.config/fabric/.env
+# OpenRouter API key. For this app, put it in a repo-root .env (see step 2) or
+# export it — the environment is checked first. You only need fabric's own config
+# file if you run the `fabric` CLI directly, outside this app.
+echo "OPENROUTER_API_KEY=sk-or-v1-..." > ~/.config/fabric/.env   # optional
 
 # ffmpeg + ffprobe (required for Rumble audio transcription)
 ffmpeg -version
@@ -85,6 +86,16 @@ pip install -r requirements.txt
   at startup, and not at the repo root. It is **gitignored**; never commit it. If `JWT_SECRET` is
   set in the environment, that value wins and no file is written.
 - `.env` is entirely optional locally — see [`.env.example`](.env.example) for every variable.
+  `run.sh` loads a **repo-root** `.env` before starting uvicorn, so that is where the OpenRouter key
+  goes locally:
+
+  ```bash
+  cp .env.example .env     # then set OPENROUTER_API_KEY=...
+  ```
+
+  Anything already exported in your shell wins over the file, so
+  `OPENROUTER_API_KEY=... ./run.sh` works too and needs no file. Document the key nowhere else —
+  `.env` is gitignored and dockerignored.
 
 ---
 
