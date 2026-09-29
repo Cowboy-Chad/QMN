@@ -1,0 +1,41 @@
+# Netlify — frontend (static SPA).
+#
+# VITE_API_BASE is deliberately NOT set here. It is inlined at build time by Vite
+# and must point at the Render backend, whose URL does not exist until after the
+# first backend deploy. Set it in the Netlify UI:
+#
+#   Site configuration -> Environment variables -> VITE_API_BASE
+#   value: https://<your-service>.onrender.com/api
+#
+# Changing it requires a redeploy (a rebuild of the same commit is enough) —
+# it is baked into the bundle, not read at runtime.
+
+[build]
+  base = "frontend"
+  publish = "dist"
+  command = "npm run build"
+
+[build.environment]
+  # Vite 8 requires ^20.19 || >=22.12.
+  NODE_VERSION = "22.12.0"
+
+# The SPA fallback. The app uses BrowserRouter, and client.js redirects to
+# /login on a 401 — without this rule a hard refresh on any route 404s.
+# status 200 (a rewrite), not 301: the URL must stay in the address bar.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Vite fingerprints everything under /assets, so it is safe to cache forever.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# index.html must NOT be cached, or clients keep loading a bundle that
+# references deleted asset hashes after a deploy.
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"

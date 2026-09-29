@@ -5,8 +5,11 @@ Self-hosted OSINT app for analyzing YouTube and Rumble videos using AI-powered a
 ```
 React 19 (Vite 8, port 5174) → FastAPI (port 8000) → fabric CLI → OpenRouter API
                                                                 ↕
-                                                           SQLite (marina_jacobi.db)
+                                                     PostgreSQL (asyncpg, Alembic)
 ```
+
+**Deployed on Render (backend, Docker) + Netlify (frontend).** See `DEPLOY.md`. Postgres is the
+only database — SQLite is gone. Schema is owned by **Alembic**; the app never creates tables.
 
 **Freemium model:** Rumble (Marina Jacobi) analysis is **free** — no signup required, no account, and one **shared history** for everyone. YouTube analysis requires an **account** (full name + email + password) and then either a **33-use free trial** (available immediately) or a **$7/month subscription** via mock PayPal. YouTube history is **private per user** — nobody else can see it.
 
@@ -18,15 +21,20 @@ Two separate dev servers; frontend proxies to backend via `VITE_API_BASE` (defau
 
 ## Quick Start
 
-**Prerequisites** (outside repo): Python 3.12+, Node.js 20+, [Fabric CLI](https://github.com/danielmiessler/fabric) on PATH, OpenRouter API key in `~/.config/fabric/.env`.
+**Prerequisites** (outside repo): Python 3.12+, Node.js 22.12+, [Fabric CLI](https://github.com/danielmiessler/fabric) on PATH, and an OpenRouter API key (environment variable, or `~/.config/fabric/.env` locally). Docker (or podman) for the local database.
 
 ```bash
-# Backend
-cd backend
-python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
-./run.sh                              # uvicorn on 0.0.0.0:8000 --reload
+# 1. Database — Postgres 17 in a container (the default DATABASE_URL points here)
+docker compose up -d db
 
-# Frontend (separate terminal)
+# 2. Schema — Alembic owns it; the app never creates tables
+source backend/.venv/bin/activate
+alembic upgrade head
+
+# 3. Backend
+cd backend && ./run.sh                # uvicorn on 0.0.0.0:8000 --reload
+
+# 4. Frontend (separate terminal)
 cd frontend && npm install && npm run dev  # Vite on localhost:5174
 ```
 
@@ -38,8 +46,12 @@ Open http://localhost:5174 — root redirects to `/analysis/rumble` (free, no si
 
 ```
 backend/
-├── main.py                    # FastAPI entry, CORS, lifespan (calls init_db), /health, /v1/models
-├── database.py                # Async SQLite engine + session + init_db migration (users table + analyst columns)
+├── main.py                    # FastAPI entry, env-driven CORS, lifespan (JWT guard, single-process
+│                              # guard, temp-dir wipe, aged boot sweeper), /health, /v1/models
+├── database.py                # Env-driven Postgres engine + session. get_database_url() normalizes
+│                              # Render's postgres:// URL and strips libpq-only params; shared with Alembic
+├── fabric_patterns/           # 59 vendored Fabric patterns (<name>/system.md) — the source of truth
+│                              # for CURATED_PATTERNS, copied into the image at build time
 ├── models.py                  # SQLAlchemy models: AnalysisJob, CacheEntry, User (freemium: display_id, first_name, subscription_status)
 ├── schemas.py                 # Shared Pydantic schemas: JobStatusResponse + Auth schemas (RegisterRequest, LoginRequest, TokenResponse)
 ├── requirements.txt
@@ -79,7 +91,7 @@ backend/
     ├── auth_service.py        # JWT (HS256), register_user/login_by_email, display_id allocation, subscriptions
     ├── password_service.py    # bcrypt hash/verify (bcrypt directly, NOT passlib) + 72-byte truncation guard
     ├── trial_service.py       # Free-trial quota: atomic decrement_trial_use, idempotent refund_trial_use
-    ├── fabric_service.py      # Fabric CLI subprocess calls (asyncio.create_subprocess_exec) + 71 curated patterns
+    ├── fabric_service.py      # Fabric CLI subprocess calls (asyncio.create_subprocess_exec) + 59 curated patterns
     ├── openrouter_service.py  # Audio chunking via ffmpeg + OpenRouter transcription via gpt-audio-mini
     ├── cost_service.py        # tiktoken counting + live OpenRouter pricing (5-min cache) → USD estimate
     └── metadata_service.py    # Video metadata: oEmbed API for Rumble, yt-dlp for YouTube
@@ -124,8 +136,23 @@ frontend/
 │       │                            # + "Trial · N left" badge (amber at N <= 5)
 │       ├── AnalysisRunner.jsx       # Polls /api/jobs/{id} every 2s, renders result (metadata + markdown)
 │       ├── MarkdownResult.jsx       # react-markdown renderer with styled components + plain text fallback
-│       ├── PatternSelector.jsx      # Search dropdown, 71 patterns, single-click highlight, double-click/Enter confirm, auto-check trigger
+│       ├── PatternSelector.jsx      # Search dropdown, 59 patterns, single-click highlight, double-click/Enter confirm, auto-check trigger
 │       └── SubscriptionModal.jsx    # Upsell: start the free trial, subscribe $7/month, or log out
+
+# --- Repo root: deployment & schema ---
+├── Dockerfile                 # Two-stage; fabric pinned by version + sha256, patterns vendored,
+│                              # `touch`es fabric's required .env, pre-warms tiktoken, non-root, --workers 1
+├── docker-compose.yml         # Local Postgres 17 ONLY — the backend runs in the venv on the host
+├── .dockerignore              # Excludes frontend/, .venv, *.db*, .env, .jwt_secret (never bake a secret in)
+├── .env.example               # Canonical list of every env var, all optional locally
+├── alembic.ini                # sqlalchemy.url deliberately blank; env.py injects it from database.py
+├── alembic/
+│   ├── env.py                 # Async template; calls database.get_database_url() so normalization lives once
+│   └── versions/              # 0001_initial_schema.py — all six datetime columns are sa.DateTime(timezone=True)
+├── render.yaml                # Blueprint: managed Postgres + Docker web service, autoDeploy: false
+├── netlify.toml               # SPA 200-rewrite (BrowserRouter), asset caching, Node 22.12
+├── DEPLOY.md                  # Step-by-step deploy runbook
+└── .nvmrc                     # 22.12.0
 ```
 
 ---
@@ -149,15 +176,28 @@ frontend/
 | GET | `/api/channel/videos` | Public | Cached channel video list |
 | GET | `/api/jobs/{id}` | Optional user | Rumble jobs public; YouTube jobs owner-only (404 otherwise, even logged out) |
 | GET | `/api/history` | Optional user | Shared Rumble history + the caller's own YouTube history |
-| GET | `/api/patterns` | Public | 71 curated Fabric patterns |
+| GET | `/api/patterns` | Public | 59 curated Fabric patterns |
 | GET | `/api/models` | Public | `{models: [], default: "..."}` |
 
 ---
 
 ## Key Environment Variables
 
+Every variable below is documented with a commented example in [`.env.example`](.env.example); that file is the canonical list. Nothing needs a `.env` for local development — the defaults are chosen so `docker compose up -d db` plus `./run.sh` works as-is.
+
 | Variable | Default | Used In |
 |---|---|---|
+| `DATABASE_URL` | `postgresql+asyncpg://marina:marina@localhost:5432/marina` | `database.py`. Render supplies its internal connection string; the scheme and libpq-only params are normalized on read |
+| `DATABASE_SSL` | `auto` | `auto` \| `require` \| `disable`. `auto` enables TLS only for an external Render host |
+| `CORS_ORIGINS` | the two localhost:5174 origins | `main.py`. Comma-separated; in production this is the Netlify URL. `allow_credentials` is **false** — auth is a Bearer header, never a cookie |
+| `APP_ENV` | `development` | Informational; `production` in the image |
+| `FABRIC_BIN` | `fabric` | Path to the fabric binary. Exists so the image can pin it without a code change |
+| `FABRIC_CONFIG_DIR` | `~/.config/fabric` | This app's own pattern lookups. Note the **fabric binary itself ignores this** and always reads `$HOME/.config/fabric` |
+| `RUMBLE_MAX_DOWNLOAD_MB` | `1500` | Ceiling on the one Rumble path that still writes media to disk |
+| `MARINA_TMP_DIR` | `/tmp/marina` | Audio scratch space; wiped at boot, since per-job cleanup cannot run on SIGKILL |
+| `SWEEP_STUCK_JOBS_ON_BOOT` | `1` | Boot sweeper for jobs orphaned by a hard kill |
+| `STUCK_JOB_MAX_AGE_SECONDS` | `3600` | Age bound on that sweeper, so it cannot kill a job another process just started |
+| `TIKTOKEN_CACHE_DIR` | `/opt/tiktoken` (image) | Pre-warmed at build so the first request needs no egress |
 | `FABRIC_MODEL` | `deepseek/deepseek-v4-flash` | Fabric analysis (hard-wired, no model selector in UI) |
 | `FABRIC_VENDOR` | `OpenRouter` | Fabric `-V` flag |
 | `FABRIC_TIMEOUT` | `600` | Per-attempt timeout (seconds) |
@@ -172,7 +212,7 @@ frontend/
 | `CHANNEL_BATCH_SIZE` | `3` | Parallel page fetches for channel scraping |
 | `CHANNEL_REFRESH_INTERVAL` | `3600` | Cache refresh interval (seconds, default 1 hour) |
 | `VITE_API_BASE` | `http://localhost:8000/api` | Frontend API base |
-| `JWT_SECRET` | Auto-generated (`backend/.jwt_secret`) | HMAC key for JWT signing. Written on first token signing, **not** at startup, and gitignored |
+| `JWT_SECRET` | Auto-generated (`backend/.jwt_secret`) | HMAC key for JWT signing. **The environment always wins over the file**, and no file is written when the env supplies it. In production it is required — see the gotcha below. Gitignored |
 | `JWT_ALGORITHM` | `HS256` | JWT signing algorithm |
 | `JWT_EXPIRE_MINUTES` | `1440` (24 hours) | Token lifetime before expiry |
 
@@ -221,8 +261,9 @@ frontend/
 
 ## Database
 
-- **File:** `marina_jacobi.db` (ignored by git, SQLite via aiosqlite)
-- **Auto-created** on first run (`init_db` in `main.py` lifespan)
+- **PostgreSQL** via `asyncpg`, configured entirely by `DATABASE_URL` (default `postgresql+asyncpg://marina:marina@localhost:5432/marina`, matching `docker-compose.yml`). `database.get_database_url()` owns the normalization — scheme rewrite plus stripping the libpq-only query params asyncpg rejects — and `alembic/env.py` calls that same function rather than duplicating it.
+- **Schema is owned by Alembic.** The app never creates tables: `init_db()` and the legacy `_migrate()` are gone, and `main.py`'s lifespan no longer touches schema. `alembic upgrade head` is a required setup step locally and a `preDeployCommand` on Render. If the migration fails, the deploy fails — deliberately.
+- **Every datetime column is `timestamptz`** (`DateTime(timezone=True)`), which is load-bearing rather than stylistic. See the gotcha below before adding one.
 
 ### Tables
 
@@ -283,7 +324,7 @@ frontend/
 | **ffmpeg / ffprobe** | Audio compression, duration detection, HLS stream download | Required for Rumble transcription |
 
 ### Python Packages (pip)
-`fastapi`, `uvicorn`, `sqlalchemy`, `aiosqlite`, `pydantic`, `httpx`, `tiktoken`, `youtube-transcript-api`, `python-multipart`, `cloudscraper`, `python-jose[cryptography]`
+`fastapi`, `uvicorn`, `sqlalchemy`, `asyncpg`, `alembic`, `pydantic`, `httpx`, `tiktoken`, `youtube-transcript-api`, `python-multipart`, `cloudscraper`, `requests`, `yt-dlp`, `curl-cffi`, `PyJWT[crypto]` — all pinned to exact versions in `backend/requirements.txt`. `aiosqlite` and `python-jose` are gone (Postgres; python-jose is unmaintained and carries CVE-2024-33663/33664). `requests` and `yt-dlp` are imported directly by the app, so they are declared rather than left to arrive transitively through `cloudscraper`.
 
 ### NPM Packages
 `react@19`, `react-dom@19`, `react-router-dom@7`, `react-markdown@10`, `tailwindcss@4`, `@tailwindcss/vite@4`, `lucide-react`, `jspdf`, `vite@8`, `@vitejs/plugin-react@6`, `oxlint`
@@ -298,7 +339,7 @@ frontend/
    - Pick a video → URL auto-fills, input turns green (title-resolved)
    - Paste a title or URL → auto-matches to channel video if found
    - Double-click input to clear selection
-3. PatternSelector: search patterns (71 curated), single-click to highlight, double-click or Enter to confirm
+3. PatternSelector: search patterns (59 curated), single-click to highlight, double-click or Enter to confirm
 4. On pattern confirmation → auto-check fires → checks for existing result via `/api/rumble/check-result`
    - **Found:** displays existing result immediately (AnalysisRunner)
    - **Not found:** shows red inline box "No prior analysis found — just click the button or press the Enter key"
@@ -366,7 +407,7 @@ frontend/
 ## Frontend UI Patterns
 
 ### Pattern Selection (PatternSelector)
-- **Search:** typing filters dropdown in real-time (71 curated patterns)
+- **Search:** typing filters dropdown in real-time (59 curated patterns)
 - **Numbered prefixes:** each pattern shown as `N: name` in dropdown for easy reference
 - **Single click:** highlights violet, does NOT confirm
 - **Double-click** (within 400ms): confirms → input turns green, dropdown closes, `onConfirm` fires (auto-check)
@@ -408,23 +449,29 @@ Displayed fields (when present in metadata_json):
 ### Backend
 - **`sys.path.insert(0, ...)` hack** in `main.py` — needed for absolute `from backend...` imports when run as `uvicorn backend.main:app`. Do NOT remove.
 - **run.sh** CDs into `backend/`, activates `.venv`, then `cd ..` so `backend.main` resolves as a package. `.venv` is inside `backend/`.
-- **JWT auth:** Token-based (HS256), auto-generated secret persisted to **`backend/.jwt_secret`** (not the repo root, despite older notes). Token expires after 24h (configurable via `JWT_EXPIRE_MINUTES`). Frontend stores token in `localStorage`. The secret is **gitignored** — it was committed until this change, which let anyone with repo access forge a token for any account. Never re-commit it.
+- **JWT auth:** Token-based (HS256), auto-generated secret persisted to **`backend/.jwt_secret`** (not the repo root, despite older notes). Token expires after 24h (configurable via `JWT_EXPIRE_MINUTES`). Frontend stores token in `localStorage`. The secret is **gitignored** — it was committed until this change, which let anyone with repo access forge a token for any account. Never re-commit it, and `.dockerignore` excludes it so a dev secret can never be baked into the image.
+- **JWT secret precedence is env-first, and that inversion is load-bearing.** The lookup used to check the file first and fall back to the env, which meant a `.jwt_secret` inside the image would silently override the secret Render generates via `generateValue: true` — every redeploy would mint a new random secret and invalidate every issued token with no error anywhere. Now the environment wins and no file is written when it supplies the value. `assert_jwt_secret_configured()` additionally **refuses to boot** when `RENDER` is set and `JWT_SECRET` is absent, so that failure mode is loud instead of silent.
+- **Async DB access is `asyncpg`, and a failed statement poisons the transaction.** This is why `set_cache` uses `insert(...).on_conflict_do_update(...)` rather than `try/except IntegrityError`: on Postgres recovering from an error needs a SAVEPOINT, which the old read-then-insert path did not have.
+- **Single process, deliberately.** The job registry (`_jobs` in both orchestrators) and `channel_service._background_task` are per-process state, so a job started on one worker is invisible to another. `_assert_single_process()` in `main.py` refuses to boot with `WEB_CONCURRENCY`/`WORKERS` > 1 while the boot sweeper is enabled, and the Dockerfile CMD pins `--workers 1`. Real multi-worker support needs a Postgres-backed queue with claim/heartbeat columns; it is not a flag flip.
 - **Passwords:** Accounts use **bcrypt directly** (`password_service.py`) — deliberately not `passlib`, which is unmaintained and breaks against bcrypt 4.x+. Anything over **72 bytes** is rejected rather than truncated, because bcrypt silently ignores the excess and two different long passwords would otherwise authenticate the same account. `display_id` is display/attribution only and is **no longer a credential**.
 - **No password reset exists.** Nothing is emailed. A forgotten password means permanent loss of the account and its private YouTube history — the signup and login pages state this. Adding one needs an email provider, which this app does not have.
-- **`is_subscription_active` timezone handling:** SQLite stores naive datetimes. The comparison strips tzinfo from `datetime.now(timezone.utc)` via `.replace(tzinfo=None)` to match the naive stored value.
+- **Every datetime column is `DateTime(timezone=True)` (Postgres `timestamptz`).** This is required, not cosmetic: every Python-side value written to them is aware UTC, and **asyncpg rejects an aware value bound to a naive `timestamp without time zone` column** — so a naive column makes every INSERT and UPDATE fail. SQLite silently discarded the offset, which hid the mismatch. Do not "simplify" a new column to a bare `DateTime`.
+- **Two comparisons depend on awareness.** `is_subscription_active` compares directly against `datetime.now(timezone.utc)` — it used to strip tzinfo off `now` to match a naive read, which would now raise `TypeError` (a 500 on every `/api/auth/me`) for any active subscriber. `channel_service.list_channel_videos` normalizes the *stored* value to aware rather than normalizing now to naive. After any datetime change, `grep -rn "replace(tzinfo=None)" backend/` must return nothing.
 - **YouTube access:** `require_youtube_access` returns HTTP 401 with no token, and HTTP 402 (`subscription_required`) for an account with no trial at all. It admits a subscriber **or any trial account, including one with 0 uses left** — the quota is enforced at consume time instead, because only the consume can tell a genuinely new job from a duplicate the user already paid for. Rejecting at 0 in the dependency would lock a user out of their own results. The 402 `trial_exhausted` in the API comes from the handler when the atomic consume fails. `require_subscriber` is still defined but no longer used by any route.
 - **Trial quota mechanics:** The authoritative gate is a single conditional UPDATE (`WHERE trial_uses_remaining > 0`) issued **in the same transaction as the job INSERT**, so two tabs both seeing "1 left" cannot both succeed. Failures refund; duplicate hits are free. `refund_trial_use` claims the job's `trial_use_consumed` flag before crediting, so the pipeline handler and the boot sweeper cannot both refund.
 - **Refunds have two handlers:** `asyncio.CancelledError` inherits from `BaseException`, so it skips `except Exception` and needs its own clause. A hard kill bypasses both, which is why `main.py`'s boot sweeper refunds the jobs it marks failed at startup.
 - **Subscription model:** Mock PayPal activates 30-day subscription. No auto-renewal. No real payment processing. Subscribing deliberately does **not** consume or reset the trial counter.
 - **History isolation:** Rumble rows have `user_id IS NULL` and are shared with everyone. YouTube rows carry an owner and are visible only to that user — including a **404, never 403**, for someone else's job id (a 403 would confirm a guessed id exists). `list_jobs` with no `source` filter returns `or_(source != 'youtube', user_id == uid)`; a logged-out caller gets Rumble only, and `?source=youtube` logged out returns `[]` rather than everyone's history. Unscoped, `find_existing_job_id` would hand user B user A's job id — which B's own ownership check would then 404, so B would never receive the analysis the isolation rule promises.
 - **`_next_display_id` safety:** Falls back to 1 if the users table query fails (handles race condition at first registration).
-- **UTC time serialization:** Pydantic `field_serializer` appends `+00:00` to naive datetimes from SQLite. Frontend defensively appends `Z`.
+- **UTC time serialization:** Pydantic `field_serializer` helpers append `+00:00` to a naive datetime and leave an aware one alone — with `timestamptz` columns the aware branch is what actually runs. The frontend still defensively appends `Z`. Do not "simplify" those helpers to a single path; the naive branch is what keeps test fixtures working.
 - **Channel cache datetime bug (fixed):** Naive vs aware datetime comparison in cache age check (Python 3.12+). Fixed by stripping tzinfo before comparison.
 - **Stuck-job bug (fixed):** `update_job_status("running")` was outside the try block in orchestrators — silent death left status at `pending`. Now inside try block.
 - **Rumble metadata:** Uses oEmbed API (`rumble.com/api/Media/oembed.json`) as primary source (bypasses Cloudflare), falls back to cloudscraper page scrape for additional fields (view count, upload date).
 - **Rumble transcription:** Downloads raw audio from embed JSON (`"ua"` / `"u"` blocks), selects best format (prefers aac/mp3/m4a over mp4/webm, uses bitrate as tiebreaker). Falls back to ffmpeg for HLS (m3u8) streams. Rejects `.tar` format.
 - **OpenRouter API key:** Read from `~/.config/fabric/.env` at runtime (not from environment variables). Both `openrouter_service.py` and `cost_service.py` read it independently.
-- **No cancellation mechanism:** Running background tasks cannot be cancelled. The `_jobs` dict tracks task lifecycle but provides no cancel interface.
+- **No cancellation mechanism:** Running background tasks cannot be cancelled. The `_jobs` dict tracks task lifecycle but provides no cancel interface. On Render this matters more than it used to: every deploy and restart SIGKILLs in-flight analyses, which is why the boot sweeper exists to refund the trial uses those jobs consumed, and why deploys are manual (`autoDeploy: false`).
+- **fabric needs `$HOME/.config/fabric/.env` to *exist*.** It tolerates an empty file but not a missing one: with it absent, `fabric -p <pattern>` prints two "error loading .env file" lines and **exits 0 with no output**, so every analysis silently returns an empty result instead of an error. The Dockerfile `touch`es it. fabric also ignores `XDG_CONFIG_HOME` entirely and hardcodes `$HOME/.config/fabric`, so `HOME` is the only variable that matters for pattern resolution.
+- **OpenRouter key lookup is env-first**, falling back to `~/.config/fabric/.env`. `cost_service` imports the constant from `openrouter_service` rather than re-parsing, and imports `DEFAULT_MODEL` from `fabric_service`, so the model a cost estimate is computed against is always the one that actually ran.
 - **The trial is abusable, and login is brute-forceable.** Signup grants 33 real OpenRouter calls with no email verification and the app has no rate limiting, so a disposable-email script can spend the owner's OpenRouter balance without bound. Accepted for a local/self-hosted app; both need addressing before it faces the internet.
 - **A systematically failing URL re-charges on each retry** — failed rows are excluded from dedup. Net-neutral (each failure refunds), but the counter visibly dips and recovers.
 - **`backend/.venv` vs the IDE interpreter:** the repo root also has a stale `.venv`. `run.sh` uses `backend/.venv`, which is the one that has `bcrypt`. IDE "module not found" warnings for `bcrypt` come from the wrong interpreter.
@@ -435,7 +482,7 @@ Displayed fields (when present in metadata_json):
 - **`strictPort: true`** means `npm run dev` fails loudly if 5174 is occupied instead of silently bumping to 5175 — deliberate, because CORS only allowlists 5174.
 - **`index.html` title** still shows "OSINT-1" — not rebranded to "Marina's Wisdom"
 - **MetadataDisplay.jsx** referenced in earlier docs does not exist in current code — metadata display is inlined in AnalysisRunner.jsx and HistoryPage.jsx
-- **Duplicated `request()` helper** in each API module (youtube.js, rumble.js, history.js) — identical code repeated 3 times. The shared one in `client.js` parses structured errors into `err.status` / `err.code` / `err.data` while keeping `err.message` a human string, so a 402 no longer renders as raw JSON on the page. A 401 from `/auth/login`, `/auth/register` or `/auth/me` is **not** treated as a session expiry — otherwise a wrong password would clear the token and the mount-time `/me` probe would bounce a visitor off the free Rumble page.
+- **`request()` is defined exactly once**, at [client.js:42](frontend/src/api/client.js#L42); `youtube.js`, `rumble.js` and `history.js` each just `import { request } from './client.js'`, and `API_BASE` is likewise defined only in `client.js`. (Earlier revisions of this doc claimed the helper was duplicated across the three modules — it is not, and never was in the current tree.) It parses structured errors into `err.status` / `err.code` / `err.data` while keeping `err.message` a human string, so a 402 no longer renders as raw JSON on the page. A 401 from `/auth/login`, `/auth/register` or `/auth/me` is **not** treated as a session expiry — otherwise a wrong password would clear the token and the mount-time `/me` probe would bounce a visitor off the free Rumble page.
 - **Double-click detection** uses click-timing detector (400ms threshold) rather than native `ondblclick` — because Chrome DevTools responsive/touch mode doesn't fire `ondblclick`
 - **Dropdown overlay bug (fixed):** Replaced `fixed inset-0` overlay with `onBlur` on input to prevent interception of clicks
 - **TestClient vs ASGITransport:** When running tests, use Starlette/httpx `TestClient` (which triggers the async lifespan) rather than raw `AsyncClient + ASGITransport` (which may not run the lifespan).
@@ -456,7 +503,7 @@ Displayed fields (when present in metadata_json):
 - **File upload** (`/api/analyze/file` + multipart upload) — deleted
 - **Model selector** in UI — removed; only `FABRIC_MODEL` env var controls the model
 - **`/api/models` endpoint** — returns empty list (hard-wired model)
-- **Old DB** (`cve_osint.db`) — replaced by `marina_jacobi.db`; no auto-migration
+- **SQLite entirely** — `cve_osint.db`, then `marina_jacobi.db`, are both gone, along with `init_db()`/`_migrate()` and `aiosqlite`. Postgres only; no dual-backend support and no path back
 - **Passwordless auth** (first name + display ID) — removed; replaced by email + password (`bcrypt` directly, **not** `passlib`). `display_id` survives as display/attribution only
 - **Globally shared YouTube history** — removed; YouTube rows are per-user, shared Rumble rows are not. Fully user-isolated history is *not* what this is: Rumble stays one public list
 
@@ -485,7 +532,18 @@ cd frontend && npm run preview         # Preview production build
 
 # Backend (from backend/ dir with .venv active)
 ./run.sh                               # uvicorn 0.0.0.0:8000 --reload
+
+# Database (from the repo ROOT — alembic.ini lives there, not in backend/)
+docker compose up -d db                # Postgres 17
+alembic upgrade head                   # Apply migrations
+alembic check                          # "No new upgrade operations detected" == models and migration agree
+alembic revision --autogenerate -m "..."   # After a model change; READ the generated file before committing
+alembic downgrade base && alembic upgrade head   # Round-trip check
 ```
+
+**`alembic check` is the guard against silent drift** — without it a model change ships with no
+migration and the mismatch surfaces only when a query hits a missing column, in production. Run it
+after any edit to `models.py`.
 
 No test framework is set up for either backend or frontend.
 

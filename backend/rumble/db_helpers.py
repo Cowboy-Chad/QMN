@@ -172,12 +172,29 @@ async def get_cache(key: str) -> tuple[str | None, datetime | None]:
 
 
 async def set_cache(key: str, value: str):
+    """Upsert a cache row.
+
+    A single INSERT ... ON CONFLICT DO UPDATE, not read-then-insert. Two writers
+    can race here — the background refresh task and the synchronous first-request
+    path in channel_service.list_channel_videos — and on Postgres the loser of a
+    read-then-insert race raises IntegrityError out of a request handler.
+
+    Deliberately not `try/except IntegrityError`: on Postgres a failed statement
+    poisons the surrounding transaction and would need a SAVEPOINT to recover,
+    which is exactly the trap the old database._migrate() fell into.
+    """
     from datetime import datetime, timezone
+    from sqlalchemy.dialects.postgresql import insert
+
+    now = datetime.now(timezone.utc)
+    stmt = (
+        insert(CacheEntry)
+        .values(key=key, value=value, updated_at=now)
+        .on_conflict_do_update(
+            index_elements=[CacheEntry.key],
+            set_={"value": value, "updated_at": now},
+        )
+    )
     async with async_session() as session:
-        entry = await session.get(CacheEntry, key)
-        if entry:
-            entry.value = value
-            entry.updated_at = datetime.now(timezone.utc)
-        else:
-            session.add(CacheEntry(key=key, value=value))
+        await session.execute(stmt)
         await session.commit()

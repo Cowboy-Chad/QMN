@@ -1,12 +1,35 @@
-fastapi
-uvicorn
-sqlalchemy
-aiosqlite
-pydantic
-httpx
-tiktoken
-youtube-transcript-api
-python-multipart
-cloudscraper
-python-jose[cryptography]
-bcrypt
+# Pinned to match the versions running in backend/.venv (Python 3.14.7), so the
+# container and local development behave identically. Bump deliberately.
+
+# --- Web ---
+fastapi==0.141.1
+uvicorn==0.53.0
+python-multipart==0.0.32
+
+# --- Database ---
+# Postgres only. aiosqlite was removed with the SQLite backend.
+SQLAlchemy==2.0.54
+asyncpg==0.31.0
+alembic==1.20.0
+
+# --- Auth ---
+# PyJWT replaced python-jose, which is effectively unmaintained and carries
+# CVE-2024-33663/33664. Passwords use bcrypt directly, deliberately not passlib.
+PyJWT==2.15.1
+bcrypt==5.0.0
+
+# --- HTTP / scraping ---
+httpx==0.28.1
+requests==2.34.2
+cloudscraper==1.2.71
+
+# --- Media / transcripts ---
+tiktoken==0.14.0
+youtube-transcript-api==1.2.4
+# yt-dlp --impersonate Chrome-133 requires curl_cffi in its interpreter.
+# Installed from pip rather than the distro, which has no curl_cffi package.
+yt-dlp==2026.8.19
+curl_cffi==0.16.3
+
+# --- Pydantic ---
+pydantic==2.13.5

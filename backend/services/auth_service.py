@@ -2,7 +2,8 @@ import os
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from jose import JWTError, jwt
+import jwt
+from jwt import InvalidTokenError as JWTError
 
 from backend.models import User
 from backend.database import async_session
@@ -10,21 +11,53 @@ from backend.database import async_session
 _JWT_SECRET = None
 _JWT_SECRET_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".jwt_secret")
 
+
 def _get_jwt_secret() -> str:
+    """The HMAC signing key.
+
+    The ENVIRONMENT WINS over the file. That order is load-bearing in production:
+    Render supplies JWT_SECRET as a generated env var, and if a stale
+    backend/.jwt_secret ever found its way into the image, file-first precedence
+    would silently override the managed secret. Env-first also means no secret is
+    ever written to disk in a container, whose filesystem is wiped on every deploy.
+
+    The file remains the local-development convenience it always was: generated
+    once, gitignored, stable across restarts.
+    """
     global _JWT_SECRET
     if _JWT_SECRET is not None:
         return _JWT_SECRET
+
+    env_secret = os.environ.get("JWT_SECRET")
+    if env_secret:
+        _JWT_SECRET = env_secret
+        return _JWT_SECRET  # never write a file when the environment supplies it
+
     if os.path.exists(_JWT_SECRET_FILE):
         with open(_JWT_SECRET_FILE) as f:
             _JWT_SECRET = f.read().strip()
     else:
-        _JWT_SECRET = os.environ.get("JWT_SECRET", str(uuid.uuid4()))
+        _JWT_SECRET = str(uuid.uuid4())
         try:
             with open(_JWT_SECRET_FILE, "w") as f:
                 f.write(_JWT_SECRET)
         except OSError:
-            pass
+            pass  # read-only filesystem — the in-memory secret still serves this process
     return _JWT_SECRET
+
+
+def assert_jwt_secret_configured() -> None:
+    """Refuse to start in production without an explicit JWT_SECRET.
+
+    Without this the app mints a fresh random secret on every container start,
+    which invalidates every issued token on every deploy — and looks like an
+    unexplained mass logout rather than a misconfiguration.
+    """
+    if os.environ.get("RENDER") and not os.environ.get("JWT_SECRET"):
+        raise RuntimeError(
+            "JWT_SECRET must be set in production (Render generates one; "
+            "the file fallback is for local development only)."
+        )
 
 JWT_ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS256")
 JWT_EXPIRE_MINUTES = int(os.environ.get("JWT_EXPIRE_MINUTES", "1440"))
@@ -113,7 +146,13 @@ async def register_user(full_name: str, email: str, password: str) -> User | Non
                 return user
             except IntegrityError as e:
                 await session.rollback()
-                if "email" in str(e).lower():
+                # Prefer the driver's constraint name. Matching on the raw error
+                # text only worked by accident — it happened to contain the index
+                # name `ix_users_email` — and would break silently if that index
+                # were ever renamed.
+                constraint = getattr(getattr(e, "orig", None), "constraint_name", None)
+                detail = str(constraint) if constraint else str(e)
+                if "email" in detail.lower():
                     return None  # a real duplicate
                 continue  # display_id collision — recompute and retry
 
@@ -167,7 +206,11 @@ async def is_subscription_active(user: User) -> bool:
     """Check if the user's subscription is currently active."""
     if user.subscription_status != "active":
         return False
-    if user.subscription_expires_at and user.subscription_expires_at < datetime.now(timezone.utc).replace(tzinfo=None):
+    # subscription_expires_at is timestamptz, so the value read back is aware and
+    # compares directly against an aware `now`. (This used to strip tzinfo off
+    # `now` to match a naive SQLite read; with timezone-aware columns that would
+    # raise TypeError -> a 500 on every /api/auth/me for an active subscriber.)
+    if user.subscription_expires_at and user.subscription_expires_at < datetime.now(timezone.utc):
         # Subscription expired — update status
         async with async_session() as session:
             u = await session.get(User, user.id)

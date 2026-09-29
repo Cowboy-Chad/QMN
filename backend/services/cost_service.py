@@ -1,19 +1,16 @@
-import os
-
 import httpx
 import tiktoken
 
-OPENROUTER_API_KEY = None
-_env_path = os.path.expanduser("~/.config/fabric/.env")
-if os.path.exists(_env_path):
-    with open(_env_path) as f:
-        for line in f:
-            line = line.strip()
-            if line.startswith("OPENROUTER_API_KEY="):
-                OPENROUTER_API_KEY = line.split("=", 1)[1].strip("\"'")
+# Reuse the one resolver from openrouter_service rather than parsing the same file
+# a second time — two readers of one secret is two chances to disagree about it.
+# (No import cycle: openrouter_service does not import cost_service.)
+from backend.services.openrouter_service import OPENROUTER_API_KEY
 
-# Default model from fabric config
-FABRIC_MODEL = os.environ.get("FABRIC_MODEL", "deepseek/deepseek-v4-flash")
+# Imported from fabric_service so the model used for a cost estimate is by
+# construction the same constant that was passed to `fabric -p`. Defining it here
+# as well meant the two could drift and price a different model than the one that
+# actually ran.
+from backend.services.fabric_service import DEFAULT_MODEL as FABRIC_MODEL
 
 _pricing_cache: dict[str, dict] = {}
 _pricing_cache_timestamp: float = 0

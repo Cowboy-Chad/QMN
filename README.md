@@ -7,17 +7,28 @@ OSINT analysis app leveraging [Fabric](https://github.com/danielmiessler/fabric)
 ```
 React (Vite)  ←→  FastAPI (Python)  ←→  fabric CLI  ←→  OpenRouter API
                                     ↕
-                               SQLite DB
+                            PostgreSQL (asyncpg, Alembic)
 ```
+
+Deployed as a Render backend (Docker) plus a Netlify frontend — see [DEPLOY.md](DEPLOY.md).
 
 ## Quick Start
 
 ### Prerequisites
 
 - Python 3.12+
-- Node.js 20+
+- Node.js 22.12+
 - [Fabric CLI](https://github.com/danielmiessler/fabric) installed and configured
-- OpenRouter API key (in `~/.config/fabric/.env`)
+- OpenRouter API key (environment variable, or `~/.config/fabric/.env`)
+- Docker (or podman) for the local Postgres
+
+### Database
+
+```bash
+docker compose up -d db          # Postgres 17; the default DATABASE_URL points here
+source backend/.venv/bin/activate
+alembic upgrade head             # Alembic owns the schema — the app never creates tables
+```
 
 ### Backend
 

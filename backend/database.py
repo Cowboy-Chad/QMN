@@ -1,59 +1,81 @@
 import os
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "..", "marina_jacobi.db")
-DATABASE_URL = f"sqlite+aiosqlite:///{DB_PATH}"
+from sqlalchemy.engine import make_url
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-engine = create_async_engine(DATABASE_URL, echo=False)
+# Local development default. Matches docker-compose.yml exactly, so `docker compose
+# up -d db` plus `./run.sh` works with no .env file at all.
+DEFAULT_DATABASE_URL = "postgresql+asyncpg://marina:marina@localhost:5432/marina"
+
+# libpq-only query parameters. Render's connection string carries some of these and
+# asyncpg rejects them as unexpected keyword arguments, so they are stripped.
+_LIBPQ_ONLY_PARAMS = ("sslmode", "channel_binding", "options", "target_session_attrs")
+
+
+def get_database_url() -> str:
+    """Normalize DATABASE_URL into a form asyncpg can actually connect with.
+
+    Exposed (rather than inlined) so alembic/env.py uses the identical logic —
+    one normalizer, so the app and migrations can never disagree about which
+    database they mean.
+    """
+    raw = os.environ.get("DATABASE_URL", DEFAULT_DATABASE_URL)
+
+    # Render's `connectionString` property emits the bare libpq form
+    # (postgres:// or postgresql://). SQLAlchemy needs the driver spelled out.
+    for prefix in ("postgres://", "postgresql://"):
+        if raw.startswith(prefix):
+            raw = "postgresql+asyncpg://" + raw[len(prefix):]
+            break
+
+    url = make_url(raw)
+
+    query = {k: v for k, v in url.query.items() if k not in _LIBPQ_ONLY_PARAMS}
+    if query != url.query:
+        url = url.set(query=query)
+
+    return url.render_as_string(hide_password=False)
+
+
+def get_connect_args() -> dict:
+    """TLS settings for asyncpg.
+
+    Render's *internal* connection string (same private network) needs no TLS.
+    The *external* one does. `DATABASE_SSL` forces the decision:
+    auto (default) | require | disable.
+    """
+    mode = os.environ.get("DATABASE_SSL", "auto").strip().lower()
+
+    if mode == "require":
+        return {"ssl": "require"}
+    if mode == "disable":
+        return {}
+
+    # auto: external Render hosts look like dpg-xxxxx-a.oregon-postgres.render.com,
+    # internal ones are short names with no domain.
+    host = make_url(get_database_url()).host or ""
+    if "render.com" in host:
+        return {"ssl": "require"}
+    return {}
+
+
+DATABASE_URL = get_database_url()
+
+engine = create_async_engine(
+    DATABASE_URL,
+    echo=False,
+    # Render's connection proxy silently drops idle TCP connections, which surfaces
+    # as a stale-connection error on the first query after an idle period.
+    pool_pre_ping=True,
+    pool_recycle=1800,
+    pool_size=5,
+    max_overflow=5,
+    pool_timeout=30,
+    connect_args=get_connect_args(),
+)
+
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
-
-async def init_db():
-    from backend.models import Base
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
-    # Migration: add/rename columns in existing tables (safe to run multiple times)
-    async with engine.begin() as conn:
-        def _migrate(connection):
-            import sqlalchemy as sa
-            inspector = sa.inspect(connection)
-            cols = {c["name"] for c in inspector.get_columns("analysis_jobs")}
-
-            # Rename url → video_url
-            if "url" in cols and "video_url" not in cols:
-                connection.execute(sa.text("ALTER TABLE analysis_jobs RENAME COLUMN url TO video_url"))
-
-            # Refresh column list after rename
-            cols = {c["name"] for c in inspector.get_columns("analysis_jobs")}
-
-            for col in ("video_id", "channel_id", "channel_title", "video_title", "user_id"):
-                if col not in cols:
-                    connection.execute(sa.text(f"ALTER TABLE analysis_jobs ADD COLUMN {col} VARCHAR"))
-
-            # New analyst tracking columns
-            if "analyst_name" not in cols:
-                connection.execute(sa.text("ALTER TABLE analysis_jobs ADD COLUMN analyst_name VARCHAR DEFAULT 'Anonymous'"))
-            if "analyst_display_id" not in cols:
-                connection.execute(sa.text("ALTER TABLE analysis_jobs ADD COLUMN analyst_display_id INTEGER"))
-
-            # Users table migrations
-            try:
-                user_cols = {c["name"] for c in inspector.get_columns("users")}
-                if "display_id" not in user_cols:
-                    connection.execute(sa.text("ALTER TABLE users ADD COLUMN display_id INTEGER"))
-                if "first_name" not in user_cols:
-                    connection.execute(sa.text("ALTER TABLE users ADD COLUMN first_name VARCHAR"))
-                if "subscription_status" not in user_cols:
-                    connection.execute(sa.text("ALTER TABLE users ADD COLUMN subscription_status VARCHAR DEFAULT 'free'"))
-                if "subscription_expires_at" not in user_cols:
-                    connection.execute(sa.text("ALTER TABLE users ADD COLUMN subscription_expires_at DATETIME"))
-            except Exception:
-                pass  # users table might not exist yet on fresh install
-
-        await conn.run_sync(_migrate)
-
-
-async def get_session() -> AsyncSession:
-    async with async_session() as session:
-        yield session
+# Schema is owned by Alembic (`alembic upgrade head`), never by the app — see
+# alembic/versions/. The previous init_db()/create_all()/_migrate() pair was
+# removed so a failed migration fails the deploy instead of being papered over.

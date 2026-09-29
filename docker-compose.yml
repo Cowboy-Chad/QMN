@@ -1,0 +1,37 @@
+# Local development database only.
+#
+# The backend keeps running in backend/.venv on the host (fast iteration, no
+# rebuild per edit); this just supplies the Postgres it talks to. The default
+# DATABASE_URL in backend/database.py points here, so `docker compose up -d db`
+# plus `./run.sh` is the entire local setup.
+#
+#   docker compose up -d db      # start
+#   docker compose logs -f db    # watch
+#   docker compose down          # stop (data survives in the named volume)
+#   docker compose down -v       # stop and wipe the data
+#
+# Postgres major must match the Render database (postgresMajorVersion in
+# render.yaml) so migrations are tested against the same server version.
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: marina-db
+    environment:
+      POSTGRES_USER: marina
+      POSTGRES_PASSWORD: marina
+      POSTGRES_DB: marina
+    ports:
+      - "5432:5432"
+    volumes:
+      - marina_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U marina -d marina"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+
+volumes:
+  marina_pgdata:

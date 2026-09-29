@@ -2,6 +2,7 @@ import asyncio
 import json
 import os
 import re
+import shutil
 import subprocess
 import tempfile
 
@@ -59,8 +60,21 @@ FORMAT_PRIORITY = {"aac": 0, "mp3": 0, "m4a": 0, "ogg": 0, "wav": 0, "flac": 0,
                    "m3u8": 2,
                    "tar": 3}
 
+# Extensions safe to fetch to disk directly — an audio-only rendition is small
+# (tens of MB even for a long episode), unlike a progressive video file.
+AUDIO_EXTS = {"aac", "mp3", "m4a", "ogg", "wav", "flac"}
 
-def _format_score(url: str) -> int:
+# Ceiling on a direct download. Only reachable on the fallback path now that
+# video URLs are streamed through ffmpeg, but it is what bounds the damage if
+# that fallback is ever taken.
+MAX_DOWNLOAD_MB = int(os.environ.get("RUMBLE_MAX_DOWNLOAD_MB", "1500"))
+
+
+def _format_score(url: str, mime: str | None = None) -> int:
+    # An explicit audio mime wins over the extension: the embed JSON sometimes
+    # serves an audio rendition behind a URL with no useful extension.
+    if mime and mime.lower().startswith("audio/"):
+        return 0
     ext = url.rsplit(".", 1)[-1].split("?")[0].lower()
     return FORMAT_PRIORITY.get(ext, 99)
 
@@ -72,9 +86,10 @@ def _find_urls(data: object, depth: int = 0) -> list[tuple[str, int, int]]:
     if isinstance(data, dict):
         url = data.get("url")
         if isinstance(url, str) and url.startswith("http"):
-            meta = data.get("meta", {})
-            bitrate = meta.get("bitrate", 0) if isinstance(meta, dict) else 0
-            results.append((url, _format_score(url), bitrate))
+            meta = data.get("meta", {}) if isinstance(data.get("meta"), dict) else {}
+            bitrate = meta.get("bitrate", 0)
+            mime = meta.get("mime") or meta.get("type") or meta.get("content_type")
+            results.append((url, _format_score(url, mime), bitrate))
         for v in data.values():
             results.extend(_find_urls(v, depth + 1))
     elif isinstance(data, list):
@@ -113,7 +128,12 @@ def _get_best_video_url(html: str) -> str | None:
 
 
 async def download_and_transcribe(url: str) -> tuple[str, float]:
-    tmpdir = tempfile.mkdtemp()
+    # Scratch lives under a known directory so main.py can wipe it at boot. The
+    # per-job cleanup below cannot run when the container is SIGKILLed or stopped,
+    # which is what happens on every deploy.
+    tmp_root = os.environ.get("MARINA_TMP_DIR", "/tmp/marina")
+    os.makedirs(tmp_root, exist_ok=True)
+    tmpdir = tempfile.mkdtemp(dir=tmp_root)
     try:
         scraper = _get_scraper()
 
@@ -136,6 +156,12 @@ async def download_and_transcribe(url: str) -> tuple[str, float]:
         audio_path = os.path.join(tmpdir, f"audio.{ext}")
 
         def _download():
+            """Fetch a URL to disk, refusing to exceed MAX_DOWNLOAD_MB.
+
+            Checked two ways: the Content-Length header (cheap, but may be absent
+            or wrong) and the running byte count (authoritative).
+            """
+            limit = MAX_DOWNLOAD_MB * 1024 * 1024
             r = requests.get(
                 video_url,
                 headers={"Referer": "https://rumble.com/"},
@@ -143,32 +169,68 @@ async def download_and_transcribe(url: str) -> tuple[str, float]:
                 stream=True,
             )
             r.raise_for_status()
-            with open(audio_path, "wb") as f:
-                for chunk in r.iter_content(chunk_size=8192):
-                    f.write(chunk)
+            declared = r.headers.get("Content-Length")
+            if declared and declared.isdigit() and int(declared) > limit:
+                r.close()
+                raise RuntimeError(
+                    f"Refusing to download {int(declared) / 1e6:.0f} MB "
+                    f"(RUMBLE_MAX_DOWNLOAD_MB={MAX_DOWNLOAD_MB})"
+                )
+            written = 0
+            try:
+                with open(audio_path, "wb") as f:
+                    for chunk in r.iter_content(chunk_size=8192):
+                        written += len(chunk)
+                        if written > limit:
+                            raise RuntimeError(
+                                f"Download exceeded RUMBLE_MAX_DOWNLOAD_MB="
+                                f"{MAX_DOWNLOAD_MB} — aborting"
+                            )
+                        f.write(chunk)
+            finally:
+                r.close()
 
-        if ext == "m3u8":
+        async def _ffmpeg_extract(target: str) -> bool:
+            """Stream the source through ffmpeg straight to 32 kbps mono mp3.
+
+            Nothing intermediate touches disk, so peak usage is the compressed
+            output (~90 MB for a 3-hour episode) rather than the source file —
+            which for a progressive MP4 was 3.5-7 GB. Works for both HLS (m3u8)
+            and plain HTTP video URLs.
+            """
             proc = await asyncio.create_subprocess_exec(
                 "ffmpeg", "-y",
                 "-headers", "Referer: https://rumble.com/\r\n",
                 "-i", video_url,
+                "-vn",
                 "-ac", "1",
                 "-b:a", "32k",
-                os.path.join(tmpdir, "audio.mp3"),
+                target,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
             await proc.communicate()
-            if proc.returncode != 0:
-                raise RuntimeError("ffmpeg failed to download HLS stream")
-            audio_path = os.path.join(tmpdir, "audio.mp3")
-        elif ext == "tar":
+            return proc.returncode == 0
+
+        if ext == "tar":
             raise RuntimeError("Cannot play .tar container format")
-        else:
+
+        if ext in AUDIO_EXTS:
+            # Already audio-only and small: fetch it directly.
             await asyncio.to_thread(_download)
+        else:
+            # Video or HLS: extract the audio track without ever storing the video.
+            extracted = os.path.join(tmpdir, "audio.mp3")
+            if await _ffmpeg_extract(extracted):
+                audio_path = extracted
+            else:
+                # ffmpeg could not read the stream — fall back to a capped
+                # download, which is the only remaining path that writes a
+                # potentially large file to disk.
+                await asyncio.to_thread(_download)
 
         compressed = audio_path
-        if ext != "mp3":
+        if ext != "mp3" and compressed != os.path.join(tmpdir, "audio.mp3"):
             base, _ = os.path.splitext(audio_path)
             compressed_path = f"{base}_compressed.mp3"
             proc = await asyncio.create_subprocess_exec(
@@ -192,6 +254,6 @@ async def download_and_transcribe(url: str) -> tuple[str, float]:
 
         return transcript, cost
     finally:
-        for f in os.listdir(tmpdir):
-            os.remove(os.path.join(tmpdir, f))
-        os.rmdir(tmpdir)
+        # rmtree, not a file-by-file delete: a leftover subdirectory would make
+        # os.rmdir fail and leak the whole scratch dir.
+        shutil.rmtree(tmpdir, ignore_errors=True)

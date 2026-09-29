@@ -8,14 +8,25 @@ import subprocess
 
 import httpx
 
-OPENROUTER_API_KEY = None
-_env_path = os.path.expanduser("~/.config/fabric/.env")
-if os.path.exists(_env_path):
-    with open(_env_path) as f:
+def _key_from_fabric_env() -> str | None:
+    """Fallback for local development: the key fabric itself uses."""
+    env_path = os.path.expanduser(
+        os.path.join(os.environ.get("FABRIC_CONFIG_DIR", "~/.config/fabric"), ".env")
+    )
+    if not os.path.exists(env_path):
+        return None
+    with open(env_path) as f:
         for line in f:
             line = line.strip()
             if line.startswith("OPENROUTER_API_KEY="):
-                OPENROUTER_API_KEY = line.split("=", 1)[1].strip("\"'")
+                return line.split("=", 1)[1].strip("\"'")
+    return None
+
+
+# The ENVIRONMENT wins. In a container there is no ~/.config/fabric/.env to read,
+# so a deploy that only set the env var used to fail as if no key were configured
+# at all. Fabric itself prefers real env vars over its .env file too.
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY") or _key_from_fabric_env()
 
 OPENROUTER_BASE = os.environ.get("OPENROUTER_API_BASE_URL", "https://openrouter.ai/api/v1")
 
@@ -45,9 +56,13 @@ async def _split_audio(path: str, chunk_seconds: int, out_dir: str) -> list[str]
         out_path = os.path.join(out_dir, f"chunk_{i:03d}.mp3")
         proc = await asyncio.create_subprocess_exec(
             "ffmpeg", "-y",
-            "-i", path,
+            # -ss BEFORE -i: input-side seek. With -ss after -i, ffmpeg decodes from
+            # byte 0 for every chunk and discards everything before `start`, so a
+            # 3-hour episode split into 10-minute chunks decodes ~171 chunk-lengths
+            # instead of 18 — cost growing with the square of the episode length.
             "-ss", str(start),
             "-t", str(chunk_seconds),
+            "-i", path,
             "-ac", "1",
             "-b:a", "32k",
             out_path,

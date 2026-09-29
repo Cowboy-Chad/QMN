@@ -12,13 +12,17 @@
 # Python 3.12+
 python3 --version
 
-# Node.js 20+
+# Node.js 22.12+ (Vite 8 requires ^20.19 || >=22.12)
 node --version
+
+# Docker or podman — supplies the local Postgres
+docker --version
 
 # Fabric CLI on PATH
 fabric --version
 
-# OpenRouter API key in fabric config
+# OpenRouter API key: as an environment variable, or in fabric's config.
+# The app checks the environment first and falls back to this file.
 echo "OPENROUTER_API_KEY=sk-or-v1-..." > ~/.config/fabric/.env
 
 # ffmpeg + ffprobe (required for Rumble audio transcription)
@@ -30,14 +34,37 @@ yt-dlp --version
 
 ---
 
-## 1. Backend Setup & Start
+## 1. Database (one-time, then just needs to be running)
 
 ```bash
 # Navigate to repo root
 cd /home/cowboy/000/cve-marina-1
 
+# Start Postgres 17 in a container. The default DATABASE_URL in backend/database.py
+# points here, so no .env is needed for local development.
+docker compose up -d db
+
+# Apply migrations. Alembic owns the schema — the app never creates tables.
+source backend/.venv/bin/activate
+alembic upgrade head
+
+# After any change to backend/models.py:
+alembic revision --autogenerate -m "describe the change"   # then READ the generated file
+alembic check          # "No new upgrade operations detected" == models and migration agree
+```
+
+`docker compose down` stops it; the data survives in a named volume. `docker compose down -v`
+wipes it.
+
+---
+
+## 2. Backend Setup & Start
+
+```bash
+# Navigate to repo root, then into backend/
+cd /home/cowboy/000/cve-marina-1/backend
+
 # Create virtual environment (one-time)
-cd backend
 python3 -m venv .venv
 
 # Activate it
@@ -52,12 +79,16 @@ pip install -r requirements.txt
 
 **The backend starts on `http://0.0.0.0:8000`.**
 
-- First run auto-creates `marina_jacobi.db` (SQLite database) at the repo root.
-- Auto-generates **`backend/.jwt_secret`** (JWT signing key) the first time a token is signed — not at startup, and not at the repo root. It is **gitignored**; never commit it.
+- The schema comes from `alembic upgrade head` above. If the backend reports a missing column, the
+  migration has not been applied — it does not create tables itself.
+- Auto-generates **`backend/.jwt_secret`** (JWT signing key) the first time a token is signed — not
+  at startup, and not at the repo root. It is **gitignored**; never commit it. If `JWT_SECRET` is
+  set in the environment, that value wins and no file is written.
+- `.env` is entirely optional locally — see [`.env.example`](.env.example) for every variable.
 
 ---
 
-## 2. Frontend Setup & Start (separate terminal)
+## 3. Frontend Setup & Start (separate terminal)
 
 ```bash
 # Navigate to frontend directory
@@ -74,7 +105,7 @@ npm run dev
 
 ---
 
-## 3. User Flow
+## 4. User Flow
 
 | Step | Action | Result |
 |------|--------|--------|
@@ -93,7 +124,7 @@ npm run dev
 ## Quick Reference (after everything is set up)
 
 ```bash
-# Terminal 1 — Backend
+# Terminal 1 — Backend (Postgres must already be up: docker compose up -d db)
 cd /home/cowboy/000/cve-marina-1/backend
 source .venv/bin/activate && ./run.sh
 
@@ -101,25 +132,43 @@ source .venv/bin/activate && ./run.sh
 cd /home/cowboy/000/cve-marina-1/frontend && npm run dev
 ```
 
+Deploying instead of running locally? See [DEPLOY.md](DEPLOY.md).
+
 ---
 
 ## Environment Variables Reference
 
+Every variable is documented with a commented example in [`.env.example`](.env.example); nothing
+needs a `.env` for local development.
+
 | Variable | Default | Description |
 |---|---|---|
-| `VITE_API_BASE` | `http://localhost:8000/api` | Frontend API proxy target |
+| `DATABASE_URL` | `postgresql+asyncpg://marina:marina@localhost:5432/marina` | Postgres connection string; scheme and libpq-only params are normalized on read |
+| `DATABASE_SSL` | `auto` | `auto` \| `require` \| `disable` |
+| `CORS_ORIGINS` | the two localhost:5174 origins | Comma-separated frontend origins. Set to the Netlify URL in production |
+| `VITE_API_BASE` | `http://localhost:8000/api` | Frontend API base — inlined at build time, so a change needs a rebuild |
 | `FABRIC_MODEL` | `deepseek/deepseek-v4-flash` | LLM model for Fabric analysis |
 | `FABRIC_VENDOR` | `OpenRouter` | Vendor flag passed to Fabric |
 | `FABRIC_TIMEOUT` | `600` | Per-attempt timeout (seconds) |
 | `TRANSCRIPTION_MODEL` | `openai/gpt-audio-mini` | Model for audio transcription |
 | `TRANSCRIPTION_CHUNK_SECONDS` | `600` | Audio chunk duration (10 min) |
 | `RUMBLE_CHANNEL` | `MarinaJacobi` | Only allow Rumble videos from this channel |
-| `JWT_SECRET` | Auto-generated (`backend/.jwt_secret`) | HMAC key for JWT token signing |
+| `JWT_SECRET` | Auto-generated (`backend/.jwt_secret`) | HMAC key for JWT token signing. **The environment wins over the file.** Required in production |
 | `JWT_EXPIRE_MINUTES` | `1440` (24 hours) | JWT token lifetime |
+| `OPENROUTER_API_KEY` | from `~/.config/fabric/.env` | Checked in the environment first, then that file |
+| `MARINA_TMP_DIR` | `/tmp/marina` | Audio scratch space, wiped at boot |
+| `RUMBLE_MAX_DOWNLOAD_MB` | `1500` | Ceiling on the one Rumble path that still writes media to disk |
 
 ---
 
 ## Verifying Everything Works
+
+### Database and schema
+```bash
+docker compose ps                      # db is "healthy"
+alembic current                        # shows the applied revision
+alembic check                          # "No new upgrade operations detected" — models match the migration
+```
 
 ### Backend health check
 ```bash

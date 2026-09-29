@@ -33,9 +33,13 @@ class AnalysisJob(Base):
     result = Column(Text, nullable=True)
     error = Column(Text, nullable=True)
     metadata_json = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    # timezone=True -> Postgres timestamptz. Required, not cosmetic: every default
+    # below writes an aware datetime, and asyncpg rejects an aware value bound to a
+    # naive `timestamp without time zone` column. SQLite used to discard the offset
+    # silently, which hid the mismatch.
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
-        DateTime,
+        DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
@@ -46,7 +50,7 @@ class CacheEntry(Base):
 
     key = Column(String, primary_key=True)
     value = Column(Text, nullable=False)
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
 class User(Base):
@@ -62,10 +66,10 @@ class User(Base):
     # differently, so NULL and 0 must stay distinguishable.
     trial_uses_remaining = Column(Integer, nullable=True)
     subscription_status = Column(String, default="free")  # free | active | expired
-    subscription_expires_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    subscription_expires_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
-        DateTime,
+        DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )

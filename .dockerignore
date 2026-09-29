@@ -1,0 +1,38 @@
+# Keep the build context small and make it impossible to bake a secret or a
+# stale development database into the image.
+
+# --- VCS / tooling ---
+.git
+.github
+.claude
+
+# --- Python environments (the image builds its own in /opt/venv) ---
+.venv
+backend/.venv
+**/__pycache__
+**/*.pyc
+*.egg-info
+
+# --- Frontend ---
+# Built and deployed by Netlify. Shipping node_modules into a Python image is
+# the single biggest build-time waste available.
+frontend
+node_modules
+
+# --- Local data ---
+*.db
+*.db.bak*
+backend/uploads
+
+# --- Secrets ---
+# The half of the JWT precedence fix that lives outside the code: a developer's
+# .jwt_secret must never reach the image, or it could shadow the managed secret.
+.env
+*.env.local
+.jwt_secret
+
+# --- Docs ---
+# Root-level docs only (* does not cross /), so this does not touch the pattern
+# files under backend/fabric_patterns/, which are .md and very much required.
+# alembic/ and backend/fabric_patterns/ are deliberately NOT excluded.
+*.md

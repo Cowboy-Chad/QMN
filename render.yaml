@@ -1,0 +1,71 @@
+# Render blueprint — Marina's Wisdom backend.
+#
+# Deploy: push this repo to GitHub, then in Render choose
+#   New -> Blueprint -> point at the repo.
+#
+# Deploy order is circular and needs one extra pass:
+#   1. Deploy the backend (CORS_ORIGINS still a placeholder).
+#   2. Deploy the frontend on Netlify with VITE_API_BASE = the Render URL.
+#   3. Copy the Netlify site URL into CORS_ORIGINS here and redeploy.
+# Do not "temporarily" set CORS_ORIGINS=* in production and forget it.
+
+databases:
+  - name: marina-db
+    # Keep the major version in step with docker-compose.yml (postgres:17-alpine)
+    # so migrations are tested against the same server version they run on.
+    postgresMajorVersion: "17"
+    plan: basic-256mb
+    region: oregon
+
+services:
+  - type: web
+    name: marina-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter          # always-on paid: the analysis pipeline must not spin down
+    region: oregon         # must match the database region for the internal URL
+    branch: main
+    healthCheckPath: /health
+    # Manual deploys. Every restart SIGKILLs in-flight analyses — a 3-hour Rumble
+    # job dies and its trial use is refunded by the boot sweeper — so push freely
+    # but press Deploy when nothing is running.
+    autoDeploy: false
+    # Runs once in the built image, before the new instance takes traffic, so it
+    # cannot race itself across instances the way a boot-time migration could.
+    preDeployCommand: alembic upgrade head
+    envVars:
+      # The INTERNAL connection string: same private network, no TLS, no sslmode.
+      # database.py normalizes the scheme and strips libpq-only params, and
+      # handles TLS automatically if this is ever swapped for the external URL.
+      - key: DATABASE_URL
+        fromDatabase:
+          name: marina-db
+          property: connectionString
+      - key: DATABASE_SSL
+        value: auto
+      # This is exactly why JWT precedence was inverted: the app now lets the
+      # environment win over any .jwt_secret file.
+      - key: JWT_SECRET
+        generateValue: true
+      - key: APP_ENV
+        value: production
+      # Replace with the real Netlify URL (step 3 above).
+      - key: CORS_ORIGINS
+        value: https://REPLACE-ME.netlify.app
+      # sync: false -> Render prompts for the value; it is never stored in git.
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: FABRIC_MODEL
+        value: deepseek/deepseek-v4-flash
+      - key: FABRIC_VENDOR
+        value: OpenRouter
+      # Baked into the image; repeated here so a rebuild is not needed to change it.
+      - key: TIKTOKEN_CACHE_DIR
+        value: /opt/tiktoken
+      - key: MARINA_TMP_DIR
+        value: /tmp/marina
+      - key: RUMBLE_MAX_DOWNLOAD_MB
+        value: "1500"
+      - key: PYTHONUNBUFFERED
+        value: "1"
